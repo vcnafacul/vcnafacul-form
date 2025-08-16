@@ -1,5 +1,4 @@
-export class Rank {
-  rank: number;
+export class UserByPoint {
   userId: string;
   totalScore: number;
 }

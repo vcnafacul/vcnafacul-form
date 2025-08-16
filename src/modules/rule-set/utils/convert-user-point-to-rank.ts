@@ -1,7 +1,8 @@
 import { RankingDto } from '../dto/ranking.dto.output';
 import { Rank } from '../value-object/rank';
+import { UserByPoint } from '../value-object/user-by-point';
 
-export function convertRankToDto(ranks: Rank[]): RankingDto[] {
+export function convertUserPointToRank(ranks: UserByPoint[]): Rank[] {
   // 1. Ordena por score decrescente
   const sorted = [...ranks].sort((a, b) => b.totalScore - a.totalScore);
 

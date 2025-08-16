@@ -33,7 +33,7 @@ export class MongoExceptionFilter implements ExceptionFilter {
       });
     }
 
-    return res.status(error.status).json({
+    return res.status(error.status ?? 500).json({
       statusCode: error?.status ?? 500,
       error: error?.response?.message?.map((m) => m).join(', ') ?? error.message,
       message: error.message,
