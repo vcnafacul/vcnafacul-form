@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
-import { ApiBody, ApiTags } from '@nestjs/swagger';
+import { ApiProperty, ApiTags } from '@nestjs/swagger';
 import { CreateSubmissionDtoInput } from './dto/create-submission.dto.input';
 import { Submission } from './submission.schema';
 import { SubmissionSevice } from './submission.service';
@@ -10,7 +10,7 @@ export class SubmissionController {
   constructor(private readonly service: SubmissionSevice) {}
 
   @Post()
-  @ApiBody({
+  @ApiProperty({
     description: 'responde formulário e gera submissão',
     type: Submission,
   })
@@ -19,7 +19,7 @@ export class SubmissionController {
   }
 
   @Get(':id')
-  @ApiBody({
+  @ApiProperty({
     description: 'buscar formulario por id',
     type: Submission,
   })

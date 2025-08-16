@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
-import { ApiBody, ApiTags } from '@nestjs/swagger';
+import { ApiProperty, ApiTags } from '@nestjs/swagger';
 import { GetAllDtoInput } from 'src/common/base/dto/get-all.dto.input';
 import { GetAllDtoOutput } from 'src/common/base/dto/get-all.dto.output';
 import { AddQuestionDtoInput } from './dto/add-question.dto.input';
@@ -13,7 +13,7 @@ export class SectionController {
   constructor(private readonly service: SectionSevice) {}
 
   @Post()
-  @ApiBody({
+  @ApiProperty({
     description: 'criação de seção',
     type: Section,
   })
@@ -22,7 +22,7 @@ export class SectionController {
   }
 
   @Get(':id')
-  @ApiBody({
+  @ApiProperty({
     description: 'buscar seção por id',
     type: Section,
   })
@@ -31,7 +31,7 @@ export class SectionController {
   }
 
   @Get()
-  @ApiBody({
+  @ApiProperty({
     description: 'buscar todas seções paginadas',
   })
   async find(@Query() qyery: GetAllDtoInput): Promise<GetAllDtoOutput<Section>> {
@@ -39,7 +39,7 @@ export class SectionController {
   }
 
   @Patch('add-question')
-  @ApiBody({
+  @ApiProperty({
     description: 'adiciona seção ao formulário',
   })
   async addSection(@Body() body: AddQuestionDtoInput): Promise<Section | null> {
