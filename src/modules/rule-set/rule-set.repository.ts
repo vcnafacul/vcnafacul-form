@@ -1,6 +1,6 @@
+import { Injectable } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { createRepository } from 'src/common/base/base.repository';
-import { Injectable } from '@nestjs/common';
 import { RuleSet } from './rule-set.schema';
 
 @Injectable()

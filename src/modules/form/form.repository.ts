@@ -1,7 +1,7 @@
-import { createRepository } from 'src/common/base/base.repository';
-import { Form } from './form.schema';
 import { Injectable } from '@nestjs/common';
 import { Types } from 'mongoose';
+import { createRepository } from 'src/common/base/base.repository';
+import { Form } from './form.schema';
 
 @Injectable()
 export class FormRepository extends createRepository(Form) {

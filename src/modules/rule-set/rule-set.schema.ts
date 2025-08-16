@@ -1,8 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { BaseSchema } from 'src/common/base/base.schema';
 import { HydratedDocument, Types } from 'mongoose';
-import { Rule } from '../rule/rule.schema';
+import { BaseSchema } from 'src/common/base/base.schema';
 import { Form } from '../form/form.schema';
+import { Rule } from '../rule/rule.schema';
 
 @Schema({ timestamps: true, versionKey: false })
 export class RuleSet extends BaseSchema {

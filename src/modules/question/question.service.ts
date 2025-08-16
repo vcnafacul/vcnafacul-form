@@ -1,12 +1,12 @@
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { Types } from 'mongoose';
 import { GetAllInput } from 'src/common/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { Question } from './question.schema';
-import { QuestionRepository } from './question.repository';
-import { plainToInstance } from 'class-transformer';
-import { CreateQuestionDtoInput } from './dto/create-question.dto.input';
 import { SectionSevice } from '../section/section.service';
-import { Types } from 'mongoose';
+import { CreateQuestionDtoInput } from './dto/create-question.dto.input';
+import { QuestionRepository } from './question.repository';
+import { Question } from './question.schema';
 
 @Injectable()
 export class QuestionSevice {
@@ -42,10 +42,7 @@ export class QuestionSevice {
       return question;
     } catch {
       // Você pode mapear aqui erros conhecidos (11000 etc.) para 409/400 se quiser
-      throw new HttpException(
-        'Erro ao criar a questão',
-        HttpStatus.BAD_REQUEST,
-      );
+      throw new HttpException('Erro ao criar a questão', HttpStatus.BAD_REQUEST);
     }
   }
 

@@ -1,0 +1,17 @@
+{
+  "editor.formatOnSave": true,
+
+  // Prettier é o formatador padrão em TS/TSX
+  "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[typescriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+
+  // Deixe o ESLint aplicar fixes SEM organizar imports do VS Code
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true,
+    "source.organizeImports": false
+  },
+
+  // Evita que o Prettier só rode se achar config
+  "prettier.requireConfig": true
+}

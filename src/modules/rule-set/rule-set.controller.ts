@@ -1,25 +1,17 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Get,
-  Param,
-  Query,
-  Patch,
-} from '@nestjs/common';
-import { ApiTags, ApiResponse } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GetAllDtoInput } from 'src/common/base/dto/get-all.dto.input';
 import { GetAllDtoOutput } from 'src/common/base/dto/get-all.dto.output';
 import { CreateRuleSetDtoInput } from './dto/create-rule-set.dto.input';
-import { RuleSet } from './rule-set.schema';
-import { RuleSetSevice } from './rule-set.service';
+import { RankingDtoInput } from './dto/ranking.dto.input';
+import { RankingDtoOutput } from './dto/ranking.dto.output';
 import {
   Action,
   UpdateRuleSetDtoInput,
   UpdateRuleSetWithActionDtoInput,
 } from './dto/update-rule-set.dto.input';
-import { RankingDtoOutput } from './dto/ranking.dto.output';
-import { RankingDtoInput } from './dto/ranking.dto.input';
+import { RuleSet } from './rule-set.schema';
+import { RuleSetSevice } from './rule-set.service';
 
 @ApiTags('Conjunto de Regras')
 @Controller('v1/rules-set')
@@ -40,9 +32,7 @@ export class RuleSetController {
     description: 'ranking de regras',
     type: RankingDtoOutput,
   })
-  async rankFormUsers(
-    @Body() body: RankingDtoInput,
-  ): Promise<RankingDtoOutput> {
+  async rankFormUsers(@Body() body: RankingDtoInput): Promise<RankingDtoOutput> {
     return await this.service.rankFormUsers(body);
   }
 
@@ -58,9 +48,7 @@ export class RuleSetController {
   @ApiResponse({
     description: 'buscar todos os conjuntos de regras paginados',
   })
-  async find(
-    @Query() qyery: GetAllDtoInput,
-  ): Promise<GetAllDtoOutput<RuleSet>> {
+  async find(@Query() qyery: GetAllDtoInput): Promise<GetAllDtoOutput<RuleSet>> {
     return await this.service.find(qyery);
   }
 

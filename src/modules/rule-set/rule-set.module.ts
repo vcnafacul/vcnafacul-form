@@ -1,12 +1,12 @@
-import { MongooseModule } from '@nestjs/mongoose';
-import ruleSetSchema, { RuleSet } from './rule-set.schema';
 import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { RuleModule } from '../rule/rule.module';
+import ruleSchema, { Rule } from '../rule/rule.schema';
+import { SubmissionModule } from '../submission/submission.module';
 import { RuleSetController } from './rule-set.controller';
 import { RuleSetRepository } from './rule-set.repository';
+import ruleSetSchema, { RuleSet } from './rule-set.schema';
 import { RuleSetSevice } from './rule-set.service';
-import ruleSchema, { Rule } from '../rule/rule.schema';
-import { RuleModule } from '../rule/rule.module';
-import { SubmissionModule } from '../submission/submission.module';
 
 @Module({
   imports: [

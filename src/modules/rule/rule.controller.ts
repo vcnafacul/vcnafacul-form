@@ -59,19 +59,10 @@ export class RuleController {
         },
         weight: { type: 'number' },
       },
-      required: [
-        'name',
-        'description',
-        'type',
-        'strategy',
-        'questionId',
-        'config',
-      ],
+      required: ['name', 'description', 'type', 'strategy', 'questionId', 'config'],
     },
   })
-  async create(
-    @Body(ConfigSchemaValidationPipe) body: CreateRuleDtoInput,
-  ): Promise<Rule> {
+  async create(@Body(ConfigSchemaValidationPipe) body: CreateRuleDtoInput): Promise<Rule> {
     return await this.service.create(body);
   }
 

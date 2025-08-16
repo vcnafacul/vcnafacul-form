@@ -1,8 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { BaseSchema } from 'src/common/base/base.schema';
-import { AnswerType } from './enum/answer-type';
-import { AnswerCollectionType } from './enum/answer-collection-type';
 import { HydratedDocument } from 'mongoose';
+import { BaseSchema } from 'src/common/base/base.schema';
+import { AnswerCollectionType } from './enum/answer-collection-type';
+import { AnswerType } from './enum/answer-type';
 
 @Schema({ timestamps: true, versionKey: false })
 export class Question extends BaseSchema {

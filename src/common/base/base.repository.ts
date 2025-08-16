@@ -1,9 +1,9 @@
 import { mixin, NotFoundException, Type } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { BaseSchema } from './base.schema';
 import { GetAllWhereInput } from './interfaces/get-all.input';
 import { GetAllOutput } from './interfaces/get-all.output';
-import { BaseSchema } from './base.schema';
-import { InjectModel } from '@nestjs/mongoose';
 
 export function createRepository<TDoc extends BaseSchema>(schema: Type<TDoc>) {
   class ConcreteRepository extends BaseRepository<TDoc> {
@@ -27,11 +27,7 @@ export class BaseRepository<T extends BaseSchema> {
     return domain.toObject() as T;
   }
 
-  async find({
-    page,
-    limit,
-    where,
-  }: GetAllWhereInput): Promise<GetAllOutput<T>> {
+  async find({ page, limit, where }: GetAllWhereInput): Promise<GetAllOutput<T>> {
     const data = await this.model
       .find()
       .skip((page - 1) * limit)
@@ -55,10 +51,7 @@ export class BaseRepository<T extends BaseSchema> {
   }
 
   async delete(id: string) {
-    const existingRecord = await this.model.findOneAndUpdate(
-      { _id: id },
-      { deleted: true },
-    );
+    const existingRecord = await this.model.findOneAndUpdate({ _id: id }, { deleted: true });
 
     if (!existingRecord) {
       throw new NotFoundException(`Registro com ID ${id} não encontrado.`);

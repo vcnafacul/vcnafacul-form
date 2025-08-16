@@ -1,13 +1,13 @@
+import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import questionSchema, { Question } from '../question/question.schema';
-import { Module } from '@nestjs/common';
 
-import submissionSchema, { Submission } from './submission.schema';
-import formSchema, { Form } from '../form/form.schema';
-import { SubmissionRepository } from './submission.repository';
-import { SubmissionSevice } from './submission.service';
-import { SubmissionController } from './submission.controller';
 import { FormRepository } from '../form/form.repository';
+import formSchema, { Form } from '../form/form.schema';
+import { SubmissionController } from './submission.controller';
+import { SubmissionRepository } from './submission.repository';
+import submissionSchema, { Submission } from './submission.schema';
+import { SubmissionSevice } from './submission.service';
 
 @Module({
   imports: [

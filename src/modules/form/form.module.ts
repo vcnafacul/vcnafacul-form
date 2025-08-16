@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import formSchema, { Form } from './form.schema';
-import { FormSevice } from './form.service';
-import { FormRepository } from './form.repository';
-import { FormController } from './form.controller';
-import sectionSchema, { Section } from '../section/section.schema';
 import questionSchema, { Question } from '../question/question.schema';
 import { SectionModule } from '../section/section.module';
+import sectionSchema, { Section } from '../section/section.schema';
+import { FormController } from './form.controller';
+import { FormRepository } from './form.repository';
+import formSchema, { Form } from './form.schema';
+import { FormSevice } from './form.service';
 
 @Module({
   imports: [

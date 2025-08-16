@@ -1,6 +1,6 @@
+import { Injectable } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { createRepository } from 'src/common/base/base.repository';
-import { Injectable } from '@nestjs/common';
 import { Submission } from './submission.schema';
 
 @Injectable()
@@ -13,10 +13,7 @@ export class SubmissionRepository extends createRepository(Submission) {
     return await this.model.findById(id).exec();
   }
 
-  async findByUsersId(
-    userIds: string[],
-    formId: Types.ObjectId,
-  ): Promise<Submission[]> {
+  async findByUsersId(userIds: string[], formId: Types.ObjectId): Promise<Submission[]> {
     return await this.model
       .find({
         userId: { $in: userIds },

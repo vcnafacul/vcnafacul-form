@@ -8,8 +8,8 @@ import {
   IsString,
   ValidateIf,
 } from 'class-validator';
-import { AnswerType } from '../enum/answer-type';
 import { AnswerCollectionType } from '../enum/answer-collection-type';
+import { AnswerType } from '../enum/answer-type';
 
 export class CreateQuestionDtoInput {
   @ApiProperty()

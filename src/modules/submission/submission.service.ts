@@ -1,12 +1,12 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
+import { plainToInstance } from 'class-transformer';
 import { GetAllInput } from 'src/common/base/interfaces/get-all.input';
-import { Submission } from './submission.schema';
-import { SubmissionRepository } from './submission.repository';
+import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
 import { FormRepository } from '../form/form.repository';
 import { CreateSubmissionDtoInput } from './dto/create-submission.dto.input';
+import { SubmissionRepository } from './submission.repository';
+import { Submission } from './submission.schema';
 import { validateAndNormalizeValue } from './utils/validate-and-normalize';
-import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class SubmissionSevice {
@@ -25,20 +25,15 @@ export class SubmissionSevice {
     }, 0);
     if (questionLenght === 0) throw new BadRequestException('Form is empty');
 
-    if (dto.answers.length === 0)
-      throw new BadRequestException('Answers is empty');
+    if (dto.answers.length === 0) throw new BadRequestException('Answers is empty');
 
     const qById = new Map(
-      form.sections
-        .flatMap((s) => s.questions.map((q) => q))
-        .map((q) => [q._id!, q]),
+      form.sections.flatMap((s) => s.questions.map((q) => q)).map((q) => [q._id!, q]),
     );
     qById.forEach((q) => {
-      const answer = dto.answers.find(
-        (a) => a.questionId === q._id?.toString(),
-      );
+      const answer = dto.answers.find((a) => a.questionId === q._id?.toString());
       if (!answer) {
-        throw new BadRequestException(`Question ${q._id} not found`);
+        throw new BadRequestException(`Question ${q._id!.toString()} not found`);
       }
       validateAndNormalizeValue(answer, q);
     });

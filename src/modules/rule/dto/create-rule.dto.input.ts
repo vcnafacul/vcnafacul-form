@@ -1,11 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsEnum,
-  IsMongoId,
-  IsObject,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsEnum, IsMongoId, IsObject, IsOptional, IsString } from 'class-validator';
 import { RuleType } from '../enum/rule-type';
 import { Strategy } from '../enum/strategy';
 

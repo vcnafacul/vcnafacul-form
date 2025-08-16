@@ -1,19 +1,11 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBody, ApiTags } from '@nestjs/swagger';
 import { GetAllDtoInput } from 'src/common/base/dto/get-all.dto.input';
 import { GetAllDtoOutput } from 'src/common/base/dto/get-all.dto.output';
+import { AddQuestionDtoInput } from './dto/add-question.dto.input';
 import { CreateSectionDtoInput } from './dto/create-section.dto.input';
 import { Section } from './section.schema';
 import { SectionSevice } from './section.service';
-import { AddQuestionDtoInput } from './dto/add-question.dto.input';
 
 @ApiTags('Seção')
 @Controller('v1/section')
@@ -42,9 +34,7 @@ export class SectionController {
   @ApiBody({
     description: 'buscar todas seções paginadas',
   })
-  async find(
-    @Query() qyery: GetAllDtoInput,
-  ): Promise<GetAllDtoOutput<Section>> {
+  async find(@Query() qyery: GetAllDtoInput): Promise<GetAllDtoOutput<Section>> {
     return await this.service.find(qyery);
   }
 

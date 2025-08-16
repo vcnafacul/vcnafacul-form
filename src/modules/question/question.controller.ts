@@ -1,10 +1,10 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GetAllDtoOutput } from 'src/common/base/dto/get-all.dto.output';
-import { QuestionSevice } from './question.service';
-import { Question } from './question.schema';
 import { CreateQuestionDtoInput } from './dto/create-question.dto.input';
 import { GetAllQuestionDtoInput } from './dto/get-all-question.dto.input';
+import { Question } from './question.schema';
+import { QuestionSevice } from './question.service';
 
 @ApiTags('Perguntas')
 @Controller('v1/question')
@@ -45,9 +45,7 @@ export class QuestionController {
   @ApiResponse({
     description: 'buscar todas perguntas paginadas',
   })
-  async find(
-    @Query() qyery: GetAllQuestionDtoInput,
-  ): Promise<GetAllDtoOutput<Question>> {
+  async find(@Query() qyery: GetAllQuestionDtoInput): Promise<GetAllDtoOutput<Question>> {
     return await this.service.find(qyery);
   }
 }

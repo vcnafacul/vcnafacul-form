@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { BaseSchema } from 'src/common/base/base.schema';
 import { HydratedDocument, Types } from 'mongoose';
+import { BaseSchema } from 'src/common/base/base.schema';
 import { Question } from '../question/question.schema';
 
 @Schema({ timestamps: true, versionKey: false })

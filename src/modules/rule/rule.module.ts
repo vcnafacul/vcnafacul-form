@@ -7,10 +7,7 @@ import { RuleController } from './rule.controller';
 import { QuestionModule } from '../question/question.module';
 
 @Module({
-  imports: [
-    MongooseModule.forFeature([{ name: Rule.name, schema: ruleSchema }]),
-    QuestionModule,
-  ],
+  imports: [MongooseModule.forFeature([{ name: Rule.name, schema: ruleSchema }]), QuestionModule],
   providers: [RuleSevice, RuleRepository],
   controllers: [RuleController],
   exports: [RuleSevice, RuleRepository],

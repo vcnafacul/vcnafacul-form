@@ -1,11 +1,11 @@
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { GetAllInput } from 'src/common/base/interfaces/get-all.input';
+import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
+import { QuestionRepository } from '../question/question.repository';
+import { AddQuestionDtoInput } from './dto/add-question.dto.input';
 import { CreateSectionDtoInput } from './dto/create-section.dto.input';
 import { SectionRepository } from './section.repository';
 import { Section } from './section.schema';
-import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { AddQuestionDtoInput } from './dto/add-question.dto.input';
-import { QuestionRepository } from '../question/question.repository';
 
 @Injectable()
 export class SectionSevice {
