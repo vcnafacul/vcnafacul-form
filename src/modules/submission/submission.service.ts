@@ -39,9 +39,10 @@ export class SubmissionSevice {
     });
 
     const entity = plainToInstance(Submission, dto);
+    entity.form = form;
+    form.blocked = true;
 
     const submission = await this.repository.create(entity);
-    form.blocked = true;
     await this.formRepository.updateOne(form);
     return submission;
   }

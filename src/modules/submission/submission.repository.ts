@@ -13,11 +13,11 @@ export class SubmissionRepository extends createRepository(Submission) {
     return await this.model.findById(id).exec();
   }
 
-  async findByUsersId(userIds: string[], formId: Types.ObjectId): Promise<Submission[]> {
+  async findByUsersId(userIds: string[], form: Types.ObjectId): Promise<Submission[]> {
     return await this.model
       .find({
         userId: { $in: userIds },
-        formId,
+        form,
       })
       .lean();
   }

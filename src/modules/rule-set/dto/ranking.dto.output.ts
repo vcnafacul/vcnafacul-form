@@ -2,6 +2,9 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class RankingDto {
   @ApiProperty()
+  rank: number;
+
+  @ApiProperty()
   userId: string;
 
   @ApiProperty()

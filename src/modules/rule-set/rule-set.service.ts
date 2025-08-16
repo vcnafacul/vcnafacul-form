@@ -9,10 +9,12 @@ import { SubmissionRepository } from '../submission/submission.repository';
 import { Submission } from '../submission/submission.schema';
 import { CreateRuleSetDtoInput } from './dto/create-rule-set.dto.input';
 import { RankingDtoInput } from './dto/ranking.dto.input';
-import { RankingDto, RankingDtoOutput } from './dto/ranking.dto.output';
+import { RankingDtoOutput } from './dto/ranking.dto.output';
 import { Action, UpdateRuleSetWithActionDtoInput } from './dto/update-rule-set.dto.input';
 import { RuleSetRepository } from './rule-set.repository';
 import { RuleSet } from './rule-set.schema';
+import { Rank } from './value-object/rank';
+import { convertRankToDto } from './utils/convert-rank-to-dto';
 
 @Injectable()
 export class RuleSetSevice {
@@ -74,7 +76,7 @@ export class RuleSetSevice {
 
     const subByUser = new Map<string, Submission>(subs.map((s) => [s.userId, s]));
 
-    const ranking: RankingDto[] = [];
+    const ranking: Rank[] = [];
     for (const user of users) {
       const sub = subByUser.get(user);
       if (!sub) {
@@ -97,8 +99,8 @@ export class RuleSetSevice {
       }
       ranking.push({ userId: user, totalScore: total });
     }
-
-    return new RankingDtoOutput(ranking);
+    const rankingDto = convertRankToDto(ranking);
+    return new RankingDtoOutput(rankingDto);
   }
 
   private async getRuleSet(id: string): Promise<RuleSet> {
