@@ -1,9 +1,10 @@
 import { mixin, NotFoundException, Type } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { ClientSession, Model, Types } from 'mongoose';
 import { BaseSchema } from './base.schema';
 import { GetAllWhereInput } from './interfaces/get-all.input';
 import { GetAllOutput } from './interfaces/get-all.output';
+import { Form } from 'src/modules/form/form.schema';
 
 export function createRepository<TDoc extends BaseSchema>(schema: Type<TDoc>) {
   class ConcreteRepository extends BaseRepository<TDoc> {
@@ -21,9 +22,8 @@ export class BaseRepository<T extends BaseSchema> {
     return await this.model.startSession();
   }
 
-  async create(item: T): Promise<T> {
-    const domain = await this.model.create(item);
-    await domain.save();
+  async create(item: T, options?: { session?: ClientSession }): Promise<T> {
+    const [domain] = await this.model.create([item], options); // já cria e salva, respeitando session
     return domain.toObject() as T;
   }
 
@@ -43,7 +43,7 @@ export class BaseRepository<T extends BaseSchema> {
   }
 
   async findById(_id: string): Promise<T | null> {
-    return await this.model.findById(_id);
+    return await this.findOne({ _id });
   }
 
   async findOne(filtro: object) {
@@ -58,11 +58,28 @@ export class BaseRepository<T extends BaseSchema> {
     }
   }
 
-  async updateOne(entity: T): Promise<void> {
-    await this.model.updateOne({ _id: entity._id }, entity);
+  async updateOne(entity: T, options?: { session?: ClientSession }): Promise<void> {
+    await this.model.updateOne({ _id: entity._id }, { $set: entity }, options);
   }
 
   async updateFields(id: Types.ObjectId, fields: Partial<T>) {
     await this.model.updateOne({ _id: id }, { $set: fields }).exec();
+  }
+
+  async getFormFull(id: string): Promise<Form | undefined | null> {
+    const form = await this.model
+      .findOne({ _id: id })
+      .populate({
+        path: 'sections',
+        match: { active: true }, // só seções ativas
+        populate: {
+          path: 'questions',
+          match: { active: true }, // só questões ativas
+        },
+      })
+      .lean<Form>()
+      .exec();
+
+    return form;
   }
 }

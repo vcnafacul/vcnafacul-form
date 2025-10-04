@@ -45,4 +45,12 @@ export class FormController {
   async addSection(@Body() body: AddSectionDtoInput): Promise<Form | null> {
     return await this.service.addSection(body);
   }
+
+  @Patch(':id/set-active')
+  @ApiResponse({
+    description: 'define formulário ativo',
+  })
+  async setActive(@Param('id') id: string): Promise<void> {
+    await this.service.setActive(id);
+  }
 }

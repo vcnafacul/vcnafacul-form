@@ -34,6 +34,9 @@ export class SectionSevice {
     if (!section) {
       throw new HttpException('section id not exist', HttpStatus.NOT_FOUND);
     }
+    if (section.blocked) {
+      throw new HttpException('section is blocked', HttpStatus.BAD_REQUEST);
+    }
     const question = await this.questionRepository.findById(questionId);
     if (!question) {
       throw new HttpException('section id not exist', HttpStatus.NOT_FOUND);

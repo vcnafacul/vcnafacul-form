@@ -6,12 +6,15 @@ import { AddSectionDtoInput } from './dto/add-section.dto.input';
 import { CreateFormDtoInput } from './dto/create-form.dto.input';
 import { FormRepository } from './form.repository';
 import { Form } from './form.schema';
+import { formFullMapper } from '../form-full/utils/form-full.mapper';
+import { FormFullRepository } from '../form-full/form-full.repository';
 
 @Injectable()
 export class FormSevice {
   constructor(
     private readonly repository: FormRepository,
     private readonly sectionRepository: SectionRepository,
+    private readonly formFullRepository: FormFullRepository,
   ) {}
 
   async create(dto: CreateFormDtoInput): Promise<Form> {
@@ -22,7 +25,7 @@ export class FormSevice {
   }
 
   async findById(id: string): Promise<Form | null> {
-    return await this.repository.findById(id);
+    return await this.repository.findBy({ _id: id });
   }
 
   async find(data: GetAllInput): Promise<GetAllOutput<Form>> {
@@ -30,7 +33,7 @@ export class FormSevice {
   }
 
   async addSection({ formId, sectionId }: AddSectionDtoInput) {
-    const form = await this.repository.findById(formId);
+    const form = await this.repository.findBy({ _id: formId });
     if (!form) {
       throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
     }
@@ -41,5 +44,41 @@ export class FormSevice {
     form.sections.push(section);
     await this.repository.updateOne(form);
     return form;
+  }
+
+  async setActive(formId: string) {
+    const form = await this.repository.findBy({ _id: formId });
+    if (!form) {
+      throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
+    }
+    const oldForm = await this.repository.findActive();
+    if (oldForm) {
+      oldForm.active = false;
+      await this.repository.updateOne(oldForm);
+    }
+    form.active = true;
+    await this.repository.updateOne(form);
+  }
+
+  // ao inves de buscar por id, deve buscar o formulario ativo, que é um unico formulario
+  async getFormFull(): Promise<string> {
+    const form = await this.repository.findActive();
+    if (!form) {
+      throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
+    }
+
+    const formFull = formFullMapper(form);
+
+    // criar uma transação para garantir a consistência dos dados
+    const session = await this.repository.startSession();
+    session.startTransaction();
+
+    await this.repository.updateOne(form, { session });
+    const formFullCreated = await this.formFullRepository.create(formFull, { session });
+
+    await session.commitTransaction();
+    await session.endSession();
+
+    return formFullCreated._id!.toString();
   }
 }

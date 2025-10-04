@@ -4,9 +4,6 @@ import { now, Types } from 'mongoose';
 
 @Schema()
 export class BaseSchema {
-  toObject() {
-    throw new Error('Method not implemented.');
-  }
   @ApiProperty()
   public _id?: Types.ObjectId;
 

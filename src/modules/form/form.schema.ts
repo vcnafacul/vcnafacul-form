@@ -8,9 +8,6 @@ export class Form extends BaseSchema {
   @Prop({ required: true, unique: true })
   name: string;
 
-  @Prop({ required: true })
-  inscriptionId: string;
-
   @Prop({
     type: [{ ref: 'Section', type: Types.ObjectId }],
     default: [],
@@ -18,9 +15,6 @@ export class Form extends BaseSchema {
   sections: Section[];
 
   @Prop({ default: false })
-  blocked: boolean;
-
-  @Prop({ default: true })
   active: boolean;
 }
 

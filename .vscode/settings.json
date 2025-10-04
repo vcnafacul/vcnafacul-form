@@ -8,8 +8,8 @@
 
   // Deixe o ESLint aplicar fixes SEM organizar imports do VS Code
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": true,
-    "source.organizeImports": false
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "never"
   },
 
   // Evita que o Prettier só rode se achar config
