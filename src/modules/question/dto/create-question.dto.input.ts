@@ -15,7 +15,7 @@ export class CreateQuestionDtoInput {
   @ApiProperty()
   @IsString()
   @IsOptional()
-  sectionId?: string;
+  sectionId: string;
 
   @ApiProperty()
   @IsString()

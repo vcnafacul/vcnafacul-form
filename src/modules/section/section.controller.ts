@@ -2,7 +2,6 @@ import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common
 import { ApiProperty, ApiTags } from '@nestjs/swagger';
 import { GetAllDtoInput } from 'src/common/base/dto/get-all.dto.input';
 import { GetAllDtoOutput } from 'src/common/base/dto/get-all.dto.output';
-import { AddQuestionDtoInput } from './dto/add-question.dto.input';
 import { CreateSectionDtoInput } from './dto/create-section.dto.input';
 import { Section } from './section.schema';
 import { SectionSevice } from './section.service';
@@ -38,11 +37,11 @@ export class SectionController {
     return await this.service.find(qyery);
   }
 
-  @Patch('add-question')
+  @Patch(':id/set-active')
   @ApiProperty({
-    description: 'adiciona seção ao formulário',
+    description: 'define seção ativa',
   })
-  async addSection(@Body() body: AddQuestionDtoInput): Promise<Section | null> {
-    return await this.service.addQuestion(body);
+  async setActive(@Param('id') id: string): Promise<void> {
+    await this.service.setActive(id);
   }
 }

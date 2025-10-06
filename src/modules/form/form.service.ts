@@ -2,7 +2,6 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { GetAllInput } from 'src/common/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
 import { SectionRepository } from '../section/section.repository';
-import { AddSectionDtoInput } from './dto/add-section.dto.input';
 import { CreateFormDtoInput } from './dto/create-form.dto.input';
 import { FormRepository } from './form.repository';
 import { Form } from './form.schema';
@@ -32,20 +31,6 @@ export class FormSevice {
     return await this.repository.find(data);
   }
 
-  async addSection({ formId, sectionId }: AddSectionDtoInput) {
-    const form = await this.repository.findBy({ _id: formId });
-    if (!form) {
-      throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
-    }
-    const section = await this.sectionRepository.findById(sectionId);
-    if (!section) {
-      throw new HttpException('section id not exist', HttpStatus.NOT_FOUND);
-    }
-    form.sections.push(section);
-    await this.repository.updateOne(form);
-    return form;
-  }
-
   async setActive(formId: string) {
     const form = await this.repository.findBy({ _id: formId });
     if (!form) {
@@ -61,13 +46,13 @@ export class FormSevice {
   }
 
   // ao inves de buscar por id, deve buscar o formulario ativo, que é um unico formulario
-  async getFormFull(): Promise<string> {
+  async getFormFull(inscriptionId: string): Promise<string> {
     const form = await this.repository.findActive();
     if (!form) {
       throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
     }
 
-    const formFull = formFullMapper(form);
+    const formFull = formFullMapper(form, inscriptionId);
 
     // criar uma transação para garantir a consistência dos dados
     const session = await this.repository.startSession();
@@ -79,6 +64,6 @@ export class FormSevice {
     await session.commitTransaction();
     await session.endSession();
 
-    return formFullCreated._id!.toString();
+    return formFullCreated._id.toString();
   }
 }

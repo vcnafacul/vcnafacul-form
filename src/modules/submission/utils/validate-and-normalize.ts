@@ -1,10 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
 import { AnswerCollectionType } from 'src/modules/question/enum/answer-collection-type';
 import { AnswerType } from 'src/modules/question/enum/answer-type';
-import { Question } from 'src/modules/question/question.schema';
 import { AnswerDto } from '../dto/create-submission.dto.input';
+import { QuestionBase } from 'src/modules/form-full/schema/question-base.schema';
 
-export function validateAndNormalizeValue(answer: AnswerDto, question: Question) {
+export function validateAndNormalizeValue(answer: AnswerDto, question: QuestionBase) {
   const type: AnswerType = question.answerType;
   const typeColl: AnswerCollectionType = question.collection;
 

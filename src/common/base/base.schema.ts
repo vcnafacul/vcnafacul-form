@@ -5,7 +5,7 @@ import { now, Types } from 'mongoose';
 @Schema()
 export class BaseSchema {
   @ApiProperty()
-  public _id?: Types.ObjectId;
+  public _id: Types.ObjectId;
 
   @Prop({ required: false, default: false, select: false })
   public deleted?: boolean;

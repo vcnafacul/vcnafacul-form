@@ -1,44 +1,38 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
-import { Types } from 'mongoose';
 import { GetAllInput } from 'src/common/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
-import { SectionSevice } from '../section/section.service';
 import { CreateQuestionDtoInput } from './dto/create-question.dto.input';
 import { QuestionRepository } from './question.repository';
 import { Question } from './question.schema';
+import { SectionRepository } from '../section/section.repository';
 
 @Injectable()
 export class QuestionSevice {
   constructor(
     private readonly repository: QuestionRepository,
-    private readonly sectionService: SectionSevice,
+    private readonly sectionRepository: SectionRepository,
   ) {}
 
   async create(dto: CreateQuestionDtoInput): Promise<Question> {
-    // Guard clause: sectionId inválido → 400
-    if (dto.sectionId && !Types.ObjectId.isValid(dto.sectionId)) {
-      throw new HttpException('sectionId inválido', HttpStatus.BAD_REQUEST);
+    const section = await this.sectionRepository.findById(dto.sectionId);
+    if (!section) {
+      throw new HttpException('section não existe', HttpStatus.NOT_FOUND);
     }
-
-    // Se veio sectionId, garanta que a seção existe (rápido e barato)
-    if (dto.sectionId) {
-      const exists = await this.sectionService.findById(dto.sectionId);
-      if (!exists) {
-        throw new HttpException('sectionId não existe', HttpStatus.NOT_FOUND);
-      }
-    }
-
     let question!: Question;
+    const entity = plainToInstance(Question, dto);
+    section.questions.push(entity);
+
     try {
-      const entity = plainToInstance(Question, dto);
+      const session = await this.repository.startSession();
+      session.startTransaction();
+
       question = await this.repository.create(entity);
-      if (dto.sectionId && question._id) {
-        await this.sectionService.addQuestion({
-          sectionId: dto.sectionId,
-          questionId: question._id.toString(),
-        });
-      }
+      await this.sectionRepository.updateOne(section, { session });
+
+      await session.commitTransaction();
+      await session.endSession();
+
       return question;
     } catch {
       // Você pode mapear aqui erros conhecidos (11000 etc.) para 409/400 se quiser

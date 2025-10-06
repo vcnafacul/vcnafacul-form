@@ -1,7 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GetAllDtoOutput } from 'src/common/base/dto/get-all.dto.output';
-import { AddSectionDtoInput } from './dto/add-section.dto.input';
 import { CreateFormDtoInput } from './dto/create-form.dto.input';
 import { GetAllFormDtoInput } from './dto/get-all-form.dto.input';
 import { Form } from './form.schema';
@@ -38,19 +37,19 @@ export class FormController {
     return await this.service.find(qyery);
   }
 
-  @Patch('add-section')
-  @ApiResponse({
-    description: 'adiciona seção ao formulário',
-  })
-  async addSection(@Body() body: AddSectionDtoInput): Promise<Form | null> {
-    return await this.service.addSection(body);
-  }
-
   @Patch(':id/set-active')
   @ApiResponse({
     description: 'define formulário ativo',
   })
   async setActive(@Param('id') id: string): Promise<void> {
     await this.service.setActive(id);
+  }
+
+  @Post(':inscriptionId/get-form-full')
+  @ApiResponse({
+    description: 'get form full',
+  })
+  async getFormFull(@Param('inscriptionId') inscriptionId: string): Promise<string> {
+    return await this.service.getFormFull(inscriptionId);
   }
 }

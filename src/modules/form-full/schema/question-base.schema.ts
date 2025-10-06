@@ -1,9 +1,13 @@
 import { Prop } from '@nestjs/mongoose';
-import { AnswerCollectionType } from '../question/enum/answer-collection-type';
-import { AnswerType } from '../question/enum/answer-type';
-import { Question } from '../question/question.schema';
+import { AnswerCollectionType } from '../../question/enum/answer-collection-type';
+import { AnswerType } from '../../question/enum/answer-type';
+import { Question } from '../../question/question.schema';
+import { Types } from 'mongoose';
 
 export class QuestionBase {
+  @Prop()
+  _id: Types.ObjectId;
+
   @Prop()
   text: string; // Enunciado da pergunta
 

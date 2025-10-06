@@ -7,6 +7,7 @@ import { FormController } from './form.controller';
 import { FormRepository } from './form.repository';
 import formSchema, { Form } from './form.schema';
 import { FormSevice } from './form.service';
+import { FormFullModule } from '../form-full/form-full.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { FormSevice } from './form.service';
       { name: Question.name, schema: questionSchema },
     ]),
     SectionModule,
+    FormFullModule,
   ],
   providers: [FormSevice, FormRepository],
   controllers: [FormController],

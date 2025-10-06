@@ -8,9 +8,12 @@ export class FormFull extends BaseSchema {
   @Prop({ required: true })
   name: string;
 
+  @Prop({ required: true })
+  inscriptionId: string;
+
   @Prop({ type: [SectionBase], default: [] })
   sections: SectionBase[];
 }
 
 export type FormFullDocument = HydratedDocument<FormFull>;
-export const FormFullSchema = SchemaFactory.createForClass(FormFull);
+export default SchemaFactory.createForClass(FormFull);
