@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
-import { ApiProperty, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { ApiProperty, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GetAllDtoInput } from 'src/common/base/dto/get-all.dto.input';
 import { GetAllDtoOutput } from 'src/common/base/dto/get-all.dto.output';
 import { CreateSectionDtoInput } from './dto/create-section.dto.input';
@@ -43,5 +43,22 @@ export class SectionController {
   })
   async setActive(@Param('id') id: string): Promise<void> {
     await this.service.setActive(id);
+  }
+
+  @Delete(':id')
+  @ApiResponse({
+    description: 'excluir seção por id (apenas se não houver questões associadas)',
+    status: 200,
+  })
+  @ApiResponse({
+    description: 'Seção não encontrada',
+    status: 404,
+  })
+  @ApiResponse({
+    description: 'Não é possível excluir pois existem questões associadas',
+    status: 409,
+  })
+  async delete(@Param('id') id: string): Promise<void> {
+    await this.service.delete(id);
   }
 }

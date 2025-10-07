@@ -6,7 +6,7 @@ export class CreateSectionDtoInput {
   @IsString()
   name: string;
 
-  @ApiProperty()
-  @IsString()
-  formId: string;
+  // @ApiProperty()
+  // @IsString()
+  // formId: string;
 }
