@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GetAllDtoOutput } from 'src/common/base/dto/get-all.dto.output';
 import { CreateQuestionDtoInput } from './dto/create-question.dto.input';
@@ -92,5 +92,13 @@ export class QuestionController {
   })
   async delete(@Param('id') id: string): Promise<void> {
     await this.service.delete(id);
+  }
+
+  @Patch(':id/set-active')
+  @ApiResponse({
+    description: 'define questão ativa',
+  })
+  async setActive(@Param('id') id: string): Promise<void> {
+    await this.service.setActive(id);
   }
 }

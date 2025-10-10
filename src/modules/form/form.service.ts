@@ -36,7 +36,7 @@ export class FormSevice {
     if (!form) {
       throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
     }
-    const oldForm = await this.repository.findActive();
+    const oldForm = await this.repository.findBy({ active: true, deleted: false });
     if (oldForm) {
       oldForm.active = false;
       await this.repository.updateOne(oldForm);
@@ -47,7 +47,7 @@ export class FormSevice {
 
   // ao inves de buscar por id, deve buscar o formulario ativo, que é um unico formulario
   async getFormFull(inscriptionId: string): Promise<string> {
-    const form = await this.repository.findActive();
+    const form = await this.repository.findBy({ active: true, deleted: false });
     if (!form) {
       throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
     }

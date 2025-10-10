@@ -16,7 +16,8 @@ export class SectionRepository extends createRepository(Section) {
       .skip((page - 1) * limit)
       .limit(limit ?? Infinity)
       .populate('questions')
-      .where({ ...where });
+      .where({ ...where, deleted: false })
+      .exec();
     const totalItems = await this.model.where({ ...where }).countDocuments();
     return {
       data,

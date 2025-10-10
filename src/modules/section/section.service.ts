@@ -16,25 +16,30 @@ export class SectionSevice {
   ) {}
 
   async create(dto: CreateSectionDtoInput): Promise<Section> {
-    const form = await this.formRepository.findOne({});
-    if (!form) {
-      throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
+    try {
+      const form = await this.formRepository.findOneWithSections();
+      if (!form) {
+        throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
+      }
+      const section = new Section();
+      section.name = dto.name;
+
+      form.sections.push(section);
+
+      const session = await this.repository.startSession();
+      session.startTransaction();
+
+      await this.formRepository.updateOne(form, { session });
+      const sectionCreated = await this.repository.create(section, { session });
+
+      await session.commitTransaction();
+      await session.endSession();
+
+      return sectionCreated;
+    } catch (error) {
+      console.log(error);
+      throw new HttpException('Erro ao criar a seção', HttpStatus.BAD_REQUEST);
     }
-    const section = new Section();
-    section.name = dto.name;
-
-    form.sections.push(section);
-
-    const session = await this.repository.startSession();
-    session.startTransaction();
-
-    await this.formRepository.updateOne(form, { session });
-    const sectionCreated = await this.repository.create(section, { session });
-
-    await session.commitTransaction();
-    await session.endSession();
-
-    return sectionCreated;
   }
 
   async findById(id: string): Promise<Section | null> {

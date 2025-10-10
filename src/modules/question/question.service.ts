@@ -23,20 +23,24 @@ export class QuestionSevice {
     }
     let question!: Question;
     const entity = plainToInstance(Question, dto);
-    section.questions.push(entity);
 
     try {
       const session = await this.repository.startSession();
       session.startTransaction();
 
-      question = await this.repository.create(entity);
+      // Primeiro cria a questão no banco para gerar o _id
+      question = await this.repository.create(entity, { session });
+
+      // Depois adiciona a questão (com _id) ao array da seção
+      section.questions.push(question);
       await this.sectionRepository.updateOne(section, { session });
 
       await session.commitTransaction();
       await session.endSession();
 
       return question;
-    } catch {
+    } catch (e) {
+      console.log(e);
       // Você pode mapear aqui erros conhecidos (11000 etc.) para 409/400 se quiser
       throw new HttpException('Erro ao criar a questão', HttpStatus.BAD_REQUEST);
     }
@@ -78,6 +82,15 @@ export class QuestionSevice {
     } catch {
       throw new HttpException('Erro ao atualizar a questão', HttpStatus.BAD_REQUEST);
     }
+  }
+
+  async setActive(questionId: string) {
+    const question = await this.repository.findById(questionId);
+    if (!question) {
+      throw new HttpException('question id not exist', HttpStatus.NOT_FOUND);
+    }
+    question.active = !question.active;
+    await this.repository.updateOne(question);
   }
 
   async delete(id: string): Promise<void> {
