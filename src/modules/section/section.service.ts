@@ -6,6 +6,7 @@ import { CreateSectionDtoInput } from './dto/create-section.dto.input';
 import { SectionRepository } from './section.repository';
 import { Section } from './section.schema';
 import { FormRepository } from '../form/form.repository';
+import { UpdateSectionDtoInput } from './dto/update-section.dto.input';
 
 @Injectable()
 export class SectionSevice {
@@ -79,5 +80,15 @@ export class SectionSevice {
     } catch {
       throw new HttpException('Erro ao excluir a seção', HttpStatus.BAD_REQUEST);
     }
+  }
+
+  //função update de section que altera o nome da seção
+  async update(id: string, dto: UpdateSectionDtoInput): Promise<void> {
+    const section = await this.repository.findById(id);
+    if (!section) {
+      throw new HttpException('Seção não encontrada', HttpStatus.NOT_FOUND);
+    }
+    section.name = dto.name;
+    await this.repository.updateOne(section);
   }
 }

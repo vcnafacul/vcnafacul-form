@@ -5,6 +5,7 @@ import { GetAllDtoOutput } from 'src/common/base/dto/get-all.dto.output';
 import { CreateSectionDtoInput } from './dto/create-section.dto.input';
 import { Section } from './section.schema';
 import { SectionSevice } from './section.service';
+import { UpdateSectionDtoInput } from './dto/update-section.dto.input';
 
 @ApiTags('Seção')
 @Controller('v1/section')
@@ -60,5 +61,13 @@ export class SectionController {
   })
   async delete(@Param('id') id: string): Promise<void> {
     await this.service.delete(id);
+  }
+
+  @Patch(':id')
+  @ApiProperty({
+    description: 'atualizar seção por id',
+  })
+  async update(@Param('id') id: string, @Body() body: UpdateSectionDtoInput): Promise<void> {
+    await this.service.update(id, body);
   }
 }
