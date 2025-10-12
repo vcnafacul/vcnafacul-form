@@ -38,8 +38,7 @@ export class SectionSevice {
 
       return sectionCreated;
     } catch (error) {
-      console.log(error);
-      throw new HttpException('Erro ao criar a seção', HttpStatus.BAD_REQUEST);
+      throw new HttpException(`Erro ao criar a seção: ${error}`, HttpStatus.BAD_REQUEST);
     }
   }
 

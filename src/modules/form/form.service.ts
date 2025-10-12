@@ -47,22 +47,16 @@ export class FormSevice {
 
   // ao inves de buscar por id, deve buscar o formulario ativo, que é um unico formulario
   async getFormFull(inscriptionId: string): Promise<string> {
-    const form = await this.repository.findBy({ active: true, deleted: false });
-    if (!form) {
+    const form = await this.repository.findActiveFormFull();
+    if (!form || form.deleted || form.sections.length === 0) {
       throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
     }
 
     const formFull = formFullMapper(form, inscriptionId);
 
     // criar uma transação para garantir a consistência dos dados
-    const session = await this.repository.startSession();
-    session.startTransaction();
 
-    await this.repository.updateOne(form, { session });
-    const formFullCreated = await this.formFullRepository.create(formFull, { session });
-
-    await session.commitTransaction();
-    await session.endSession();
+    const formFullCreated = await this.formFullRepository.create(formFull);
 
     return formFullCreated._id.toString();
   }
