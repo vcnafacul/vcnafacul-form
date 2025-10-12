@@ -73,7 +73,7 @@ export class RuleSetSevice {
 
   public async rankFormUsers({ ruleSetId, users }: RankingDtoInput): Promise<RankingDtoOutput> {
     const ruleSet = await this.getRuleSet(ruleSetId);
-    const subs = await this.getSubmissions(users, ruleSet.form._id!);
+    const subs = await this.getSubmissions(users, ruleSet.form._id);
     const subByUser = new Map<string, Submission>(subs.map((s) => [s.userId, s]));
 
     const rank = getRankingByPoint(subByUser, ruleSet, users);
