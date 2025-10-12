@@ -6,19 +6,21 @@ import { GetAllWhereInput } from './interfaces/get-all.input';
 import { GetAllOutput } from './interfaces/get-all.output';
 import { Form } from 'src/modules/form/form.schema';
 
-export function createRepository<TDoc extends BaseSchema>(schema: Type<TDoc>) {
+export function createRepository<TDoc extends BaseSchema>(
+  schema: Type<TDoc>,
+): Type<BaseRepository<TDoc>> {
   class ConcreteRepository extends BaseRepository<TDoc> {
     constructor(@InjectModel(schema.name) model: Model<TDoc>) {
       super(model);
     }
   }
-  return mixin(ConcreteRepository);
+  return mixin(ConcreteRepository) as Type<BaseRepository<TDoc>>;
 }
 
 export class BaseRepository<T extends BaseSchema> {
   constructor(public readonly model: Model<T>) {}
 
-  async startSession() {
+  async startSession(): Promise<ClientSession> {
     return await this.model.startSession();
   }
 
