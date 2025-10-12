@@ -4,6 +4,7 @@ import { GetAllInput } from 'src/common/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
 import { CreateQuestionDtoInput } from './dto/create-question.dto.input';
 import { UpdateQuestionDtoInput } from './dto/update-question.dto.input';
+import { ComplexConditionDtoInput } from './dto/complex-condition.dto.input';
 import { AnswerType } from './enum/answer-type';
 import { QuestionRepository } from './question.repository';
 import { Question } from './question.schema';
@@ -21,6 +22,12 @@ export class QuestionSevice {
     if (!section) {
       throw new HttpException('section não existe', HttpStatus.NOT_FOUND);
     }
+
+    // Valida condições se fornecidas
+    if (dto.conditions) {
+      await this.validateConditions(dto.conditions);
+    }
+
     let question!: Question;
     const entity = plainToInstance(Question, dto);
 
@@ -59,6 +66,11 @@ export class QuestionSevice {
     const existingQuestion = await this.repository.findById(id);
     if (!existingQuestion) {
       throw new HttpException('Questão não encontrada', HttpStatus.NOT_FOUND);
+    }
+
+    // Valida condições se fornecidas
+    if (dto.conditions) {
+      await this.validateConditions(dto.conditions);
     }
 
     // Aplica as validações do schema antes de atualizar
@@ -125,6 +137,35 @@ export class QuestionSevice {
       await session.endSession();
     } catch {
       throw new HttpException('Erro ao excluir a questão', HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  /**
+   * Valida as condições fornecidas verificando se as questões referenciadas existem
+   */
+  private async validateConditions(conditions: ComplexConditionDtoInput): Promise<void> {
+    if (!conditions.conditions || conditions.conditions.length === 0) {
+      throw new HttpException(
+        'Conditions deve conter pelo menos uma condição',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Verifica se todas as questões referenciadas nas condições existem
+    const questionIds = conditions.conditions.map((c) => c.questionId);
+    const existingQuestions = await this.repository.model.find({
+      _id: { $in: questionIds },
+      active: true,
+    });
+
+    if (existingQuestions.length !== questionIds.length) {
+      const existingIds = existingQuestions.map((q) => q._id.toString());
+      const missingIds = questionIds.filter((id) => !existingIds.includes(id));
+
+      throw new HttpException(
+        `As seguintes questões referenciadas nas condições não existem ou estão inativas: ${missingIds.join(', ')}`,
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 }

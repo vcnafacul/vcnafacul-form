@@ -1,0 +1,58 @@
+name: Você na Facul Form
+on:
+  pull_request:
+    branches: ['main']
+    types: [opened, synchronize, reopened, closed]
+
+jobs:
+  CI:
+    if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened')
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Iniciando CI
+        run: echo "Iniciando CI"
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 20.x
+      - name: Install depends
+        run: yarn
+      - name: Build app Você na Facul Form
+        run: yarn build
+  PUSH:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Iniciando PUSH
+        run: echo "Iniciando PUSH"
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 20.x
+      - name: Install depends
+        run: yarn
+      - name: Build app vCnafacul
+        run: yarn build
+      - name: Build Image
+        run: docker build -t formsvcnafacul -f form.dockerfile .
+      - name: docker tags
+        run: docker tag formsvcnafacul vcnafacul/form:stable
+      - name: docker login
+        run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USER }} --password-stdin
+      - name: Image Push
+        run: docker push vcnafacul/form:stable
+  DEPLOY_PROD:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.base_ref == 'main'
+    needs: PUSH
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy em Produção (Hostinger)
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST_PROD }}
+          username: ${{ secrets.DEPLOY_USER_PROD }}
+          password: ${{ secrets.DEPLOY_PASS_PROD }}
+          script: |
+            chmod +x ~/subir_form.sh
+            ~/subir_form.sh
