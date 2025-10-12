@@ -10,6 +10,9 @@ import { document } from './config/swagger.config';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const port = process.env.PORT;
+  if (!port) {
+    throw new Error('PORT is not defined');
+  }
 
   // Pipes globais para validação
   app.useGlobalPipes(
@@ -26,7 +29,7 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document(app));
 
   // Start da aplicação
-  await app.listen(port ?? 3000);
+  await app.listen(port);
 
   Logger.log(
     `🚀 ${chalk.blueBright(`API rodando em: http://localhost:${port}`)}`,

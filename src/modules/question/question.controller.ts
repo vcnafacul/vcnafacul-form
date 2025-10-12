@@ -26,7 +26,13 @@ export class QuestionController {
     - multiple: múltiplas respostas permitidas
 
     **Options**:
-    - é só obrigatorio quando AnswerType for Options`,
+    - é só obrigatorio quando AnswerType for Options
+
+    **Conditions** (opcional):
+    - Define condições para exibição da pergunta
+    - Permite criar regras baseadas em respostas de outras perguntas
+    - Suporta operadores: Equal, NotEqual, GreaterThan, LessThan, Contains, etc.
+    - Lógica de combinação: And, Or`,
     type: CreateQuestionDtoInput,
   })
   async create(@Body() body: CreateQuestionDtoInput): Promise<Question> {
@@ -65,6 +71,12 @@ export class QuestionController {
 
     **Options**:
     - é só obrigatorio quando AnswerType for Options
+
+    **Conditions** (opcional):
+    - Define condições para exibição da pergunta
+    - Permite criar regras baseadas em respostas de outras perguntas
+    - Suporta operadores: Equal, NotEqual, GreaterThan, LessThan, Contains, etc.
+    - Lógica de combinação: And, Or
     
     **Nota**: Todos os campos são opcionais na edição. Apenas os campos fornecidos serão atualizados.`,
     type: UpdateQuestionDtoInput,
