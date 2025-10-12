@@ -153,14 +153,16 @@ export class QuestionSevice {
 
     // Verifica se todas as questões referenciadas nas condições existem
     const questionIds = conditions.conditions.map((c) => c.questionId);
+    const uniqueQuestionIds = [...new Set(questionIds)]; // Remove duplicatas
+
     const existingQuestions = await this.repository.model.find({
-      _id: { $in: questionIds },
+      _id: { $in: uniqueQuestionIds },
       active: true,
     });
 
-    if (existingQuestions.length !== questionIds.length) {
+    if (existingQuestions.length !== uniqueQuestionIds.length) {
       const existingIds = existingQuestions.map((q) => q._id.toString());
-      const missingIds = questionIds.filter((id) => !existingIds.includes(id));
+      const missingIds = uniqueQuestionIds.filter((id) => !existingIds.includes(id));
 
       throw new HttpException(
         `As seguintes questões referenciadas nas condições não existem ou estão inativas: ${missingIds.join(', ')}`,
