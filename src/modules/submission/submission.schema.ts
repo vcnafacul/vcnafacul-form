@@ -11,12 +11,25 @@ export class Submission extends BaseSchema {
   @Prop({ required: true })
   userId: string;
 
+  @Prop({ required: true })
+  studentId: string;
+
+  @Prop({ required: true })
+  name: string;
+
+  @Prop({ required: true })
+  email: string;
+
+  @Prop({ required: true })
+  birthday: Date;
+
   @Prop({
     type: [
       {
         questionId: { type: Types.ObjectId, ref: 'Question', required: true },
         // value pode ser string|number|boolean|string[] dependendo do tipo
-        value: { type: SchemaTypes.Mixed, required: true },
+        answer: { type: SchemaTypes.Mixed, required: true },
+        question: { type: String, required: true },
       },
     ],
     default: [],

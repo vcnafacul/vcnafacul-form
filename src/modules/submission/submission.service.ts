@@ -6,17 +6,20 @@ import { CreateSubmissionDtoInput } from './dto/create-submission.dto.input';
 import { SubmissionRepository } from './submission.repository';
 import { Submission } from './submission.schema';
 import { validateAndNormalizeValue } from './utils/validate-and-normalize';
+import { shouldQuestionBeRequired } from './utils/evaluate-conditions';
 import { FormFullRepository } from '../form-full/form-full.repository';
+import { FormFullService } from '../form-full/formfull.service';
 
 @Injectable()
 export class SubmissionSevice {
   constructor(
     private readonly repository: SubmissionRepository,
+    private readonly formFullService: FormFullService,
     private readonly formFullRepository: FormFullRepository,
   ) {}
 
   async create(dto: CreateSubmissionDtoInput): Promise<Submission> {
-    const form = await this.formFullRepository.findById(dto.formId);
+    const form = await this.formFullService.getByInscriptionId(dto.inscriptionId);
     if (!form) {
       throw new BadRequestException('Form not found');
     }
@@ -30,12 +33,22 @@ export class SubmissionSevice {
     const qById = new Map(
       form.sections.flatMap((s) => s.questions.map((q) => q)).map((q) => [q._id, q]),
     );
+
+    // Valida apenas as questões que devem ser obrigatórias baseado nas condições
     qById.forEach((q) => {
       const answer = dto.answers.find((a) => a.questionId === q._id?.toString());
-      if (!answer) {
+
+      // Verifica se a questão deve ser obrigatória baseado nas condições
+      const isRequired = shouldQuestionBeRequired(q, dto.answers);
+
+      if (isRequired && !answer) {
         throw new BadRequestException(`Question ${q._id.toString()} not found`);
       }
-      validateAndNormalizeValue(answer, q);
+
+      // Se tem resposta, valida e normaliza
+      if (answer) {
+        validateAndNormalizeValue(answer, q);
+      }
     });
 
     const entity = plainToInstance(Submission, dto);

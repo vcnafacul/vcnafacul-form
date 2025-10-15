@@ -3,6 +3,7 @@ import { AnswerCollectionType } from '../../question/enum/answer-collection-type
 import { AnswerType } from '../../question/enum/answer-type';
 import { Question } from '../../question/question.schema';
 import { Types } from 'mongoose';
+import { ComplexCondition } from 'src/modules/question/types/complex-condition';
 
 export class QuestionBase {
   @Prop()
@@ -19,6 +20,9 @@ export class QuestionBase {
 
   @Prop({ enum: AnswerCollectionType, default: AnswerCollectionType.Single })
   collection: AnswerCollectionType;
+
+  @Prop({ type: ComplexCondition, default: null })
+  conditions?: ComplexCondition;
 
   @Prop({
     type: [String],
