@@ -46,7 +46,7 @@ export class FormSevice {
   }
 
   // ao inves de buscar por id, deve buscar o formulario ativo, que é um unico formulario
-  async getFormFull(inscriptionId: string): Promise<string> {
+  async createFormFull(inscriptionId: string): Promise<string> {
     const form = await this.repository.findActiveFormFull();
     if (!form || form.deleted || form.sections.length === 0) {
       throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
