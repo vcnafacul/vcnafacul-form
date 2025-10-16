@@ -45,11 +45,11 @@ export class FormController {
     await this.service.setActive(id);
   }
 
-  @Post(':inscriptionId/get-form-full')
+  @Post(':inscriptionId/create-form-full')
   @ApiResponse({
-    description: 'get form full',
+    description: 'criação de formulário estático',
   })
-  async getFormFull(@Param('inscriptionId') inscriptionId: string): Promise<string> {
-    return await this.service.getFormFull(inscriptionId);
+  async createFormFull(@Param('inscriptionId') inscriptionId: string): Promise<string> {
+    return await this.service.createFormFull(inscriptionId);
   }
 }

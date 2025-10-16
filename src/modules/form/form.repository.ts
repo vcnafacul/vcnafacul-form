@@ -6,7 +6,7 @@ import { Form } from './form.schema';
 export class FormRepository extends createRepository(Form) {
   async findBy(where: object): Promise<Form | null> {
     return await this.model
-      .findById({ ...where })
+      .findOne({ ...where, deleted: false })
       .populate('sections')
       .populate({
         path: 'sections',
@@ -17,5 +17,20 @@ export class FormRepository extends createRepository(Form) {
 
   async findOneWithSections(): Promise<Form | null> {
     return await this.model.findOne({}).populate('sections').exec();
+  }
+
+  async findActiveFormFull(): Promise<Form | null> {
+    return await this.model
+      .findOne({ active: true, deleted: false })
+      .populate({
+        path: 'sections',
+        match: { active: true, deleted: false },
+        populate: {
+          path: 'questions',
+          match: { active: true, deleted: false },
+        },
+      })
+      .lean()
+      .exec();
   }
 }
