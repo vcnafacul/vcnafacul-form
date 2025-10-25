@@ -20,15 +20,6 @@ export class FormController {
     return await this.service.create(body);
   }
 
-  @Get(':id')
-  @ApiResponse({
-    description: 'buscar formulario por id',
-    type: Form,
-  })
-  async findById(@Param('id') id: string): Promise<Form | null> {
-    return await this.service.findById(id);
-  }
-
   @Get()
   @ApiResponse({
     description: 'buscar todos formularios paginados',
@@ -51,5 +42,22 @@ export class FormController {
   })
   async createFormFull(@Param('inscriptionId') inscriptionId: string): Promise<string> {
     return await this.service.createFormFull(inscriptionId);
+  }
+
+  @Get('has-active')
+  @ApiResponse({
+    description: 'verifica se existe um formulário ativo',
+  })
+  async hasActiveForm(): Promise<boolean> {
+    return await this.service.hasActiveForm();
+  }
+
+  @Get(':id')
+  @ApiResponse({
+    description: 'buscar formulario por id',
+    type: Form,
+  })
+  async findById(@Param('id') id: string): Promise<Form | null> {
+    return await this.service.findById(id);
   }
 }
