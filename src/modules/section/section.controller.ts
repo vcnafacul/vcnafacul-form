@@ -103,4 +103,26 @@ export class SectionController {
   ): Promise<void> {
     await this.service.reorderQuestions(id, body);
   }
+
+  @Post(':id/duplicate')
+  @ApiProperty({
+    description:
+      'Duplica uma seção com todas as suas questões, adicionando o sufixo "_copy" ao nome',
+    type: Section,
+  })
+  @ApiResponse({
+    description: 'Seção duplicada com sucesso',
+    status: 201,
+  })
+  @ApiResponse({
+    description: 'Seção não encontrada',
+    status: 404,
+  })
+  @ApiResponse({
+    description: 'Erro ao duplicar a seção',
+    status: 400,
+  })
+  async duplicate(@Param('id') id: string): Promise<Section> {
+    return await this.service.duplicate(id);
+  }
 }
