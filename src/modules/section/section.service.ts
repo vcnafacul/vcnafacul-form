@@ -7,6 +7,7 @@ import { SectionRepository } from './section.repository';
 import { Section } from './section.schema';
 import { FormRepository } from '../form/form.repository';
 import { UpdateSectionDtoInput } from './dto/update-section.dto.input';
+import { ReorderQuestionsDtoInput } from './dto/reorder-questions.dto.input';
 
 @Injectable()
 export class SectionSevice {
@@ -89,5 +90,55 @@ export class SectionSevice {
     }
     section.name = dto.name;
     await this.repository.updateOne(section);
+  }
+
+  async reorderQuestions(sectionId: string, dto: ReorderQuestionsDtoInput): Promise<void> {
+    // Busca a seção
+    const section = await this.repository.findById(sectionId);
+    if (!section) {
+      throw new HttpException('Seção não encontrada', HttpStatus.NOT_FOUND);
+    }
+
+    // Converte os IDs da seção para strings para comparação
+    const sectionQuestionIds = section.questions.map((q) => q._id.toString());
+    const receivedQuestionIds = dto.questionIds;
+
+    // Validação 1: Verifica se todos os IDs recebidos existem na seção
+    const missingInSection = receivedQuestionIds.filter((id) => !sectionQuestionIds.includes(id));
+    if (missingInSection.length > 0) {
+      throw new HttpException(
+        `As seguintes questões não pertencem à seção: ${missingInSection.join(', ')}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Validação 2: Verifica se todos os IDs da seção estão no array recebido
+    const missingInReceived = sectionQuestionIds.filter((id) => !receivedQuestionIds.includes(id));
+    if (missingInReceived.length > 0) {
+      throw new HttpException(
+        `As seguintes questões da seção estão faltando no array recebido: ${missingInReceived.join(', ')}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Validação 3: Verifica se a quantidade de IDs é igual
+    if (sectionQuestionIds.length !== receivedQuestionIds.length) {
+      throw new HttpException('A quantidade de questões não corresponde', HttpStatus.BAD_REQUEST);
+    }
+
+    // Reordena as questões na seção baseado no novo array
+    // Cria um mapa para manter os objetos completos das questões
+    const questionsMap = new Map(section.questions.map((q) => [q._id.toString(), q]));
+
+    // Reordena baseado no array recebido
+    section.questions = receivedQuestionIds
+      .map((id) => questionsMap.get(id))
+      .filter((q) => q !== undefined);
+
+    try {
+      await this.repository.updateOne(section);
+    } catch {
+      throw new HttpException('Erro ao reordenar as questões', HttpStatus.BAD_REQUEST);
+    }
   }
 }

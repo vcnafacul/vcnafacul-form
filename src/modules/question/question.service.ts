@@ -46,7 +46,7 @@ export class QuestionSevice {
       await session.endSession();
 
       return question;
-    } catch (e) {
+    } catch {
       // Você pode mapear aqui erros conhecidos (11000 etc.) para 409/400 se quiser
       throw new HttpException('Erro ao criar a questão', HttpStatus.BAD_REQUEST);
     }
