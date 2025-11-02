@@ -122,7 +122,7 @@ export class SectionController {
     description: 'Erro ao duplicar a seção',
     status: 400,
   })
-  async duplicate(@Param('id') id: string): Promise<Section> {
-    return await this.service.duplicate(id);
+  async duplicate(@Param('id') id: string): Promise<void> {
+    await this.service.duplicate(id);
   }
 }

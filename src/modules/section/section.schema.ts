@@ -21,7 +21,7 @@ export class Section extends BaseSchema {
     return {
       ...section,
       _id: new Types.ObjectId(),
-      name: `${section.name}_copy`,
+      name: `${section.name}_${new Date().getTime()}`,
       questions: [],
       active: false,
       createdAt: new Date(),

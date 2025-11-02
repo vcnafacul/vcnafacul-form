@@ -143,7 +143,7 @@ export class SectionSevice {
     }
   }
 
-  async duplicate(sectionId: string): Promise<Section> {
+  async duplicate(sectionId: string): Promise<void> {
     try {
       // Busca a seção original com suas questões
       const originalSection = await this.repository.findById(sectionId);
@@ -191,8 +191,6 @@ export class SectionSevice {
         // Commit da transação
         await session.commitTransaction();
         await session.endSession();
-
-        return sectionCreated;
       } catch (error) {
         await session.abortTransaction();
         await session.endSession();

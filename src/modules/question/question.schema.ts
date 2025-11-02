@@ -43,8 +43,8 @@ export class Question extends BaseSchema {
   static createCopy(question: Question): Question {
     return {
       _id: new Types.ObjectId(),
-      text: `${question.text}_copy`,
-      helpText: `${question.helpText}_copy`,
+      text: `${question.text}`,
+      helpText: `${question.helpText}`,
       answerType: question.answerType,
       collection: question.collection,
       conditions: question.conditions,
