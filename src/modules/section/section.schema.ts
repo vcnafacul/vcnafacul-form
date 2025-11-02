@@ -16,6 +16,18 @@ export class Section extends BaseSchema {
 
   @Prop({ default: true })
   active: boolean;
+
+  static createCopy(section: Section): Section {
+    return {
+      ...section,
+      _id: new Types.ObjectId(),
+      name: `${section.name}_${new Date().getTime()}`,
+      questions: [],
+      active: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+  }
 }
 
 export type SectionDocument = HydratedDocument<Section>;

@@ -8,6 +8,7 @@ import { Section } from './section.schema';
 import { FormRepository } from '../form/form.repository';
 import { UpdateSectionDtoInput } from './dto/update-section.dto.input';
 import { ReorderQuestionsDtoInput } from './dto/reorder-questions.dto.input';
+import { Question } from '../question/question.schema';
 
 @Injectable()
 export class SectionSevice {
@@ -139,6 +140,67 @@ export class SectionSevice {
       await this.repository.updateOne(section);
     } catch {
       throw new HttpException('Erro ao reordenar as questões', HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  async duplicate(sectionId: string): Promise<void> {
+    try {
+      // Busca a seção original com suas questões
+      const originalSection = await this.repository.findById(sectionId);
+      if (!originalSection) {
+        throw new HttpException('Seção não encontrada', HttpStatus.NOT_FOUND);
+      }
+
+      // Busca o formulário para adicionar a nova seção
+      const form = await this.formRepository.findActiveFormFull();
+      if (!form) {
+        throw new HttpException('Formulário não encontrado', HttpStatus.NOT_FOUND);
+      }
+
+      // valida se a seção é uma seção do formulário
+      if (!form.sections.some((s) => s._id.toString() === originalSection._id.toString())) {
+        throw new HttpException('Seção não encontrada no formulário', HttpStatus.NOT_FOUND);
+      }
+
+      const newSection = Section.createCopy(originalSection);
+
+      // Inicia a sessão e transação
+      const session = await this.repository.startSession();
+      session.startTransaction();
+
+      try {
+        // Cria a nova seção
+        const sectionCreated = await this.repository.create(newSection, { session });
+
+        // Duplica todas as questões da seção original
+        const newQuestions: Question[] = [];
+        for (const originalQuestion of originalSection.questions) {
+          const newQuestion = Question.createCopy(originalQuestion);
+          await this.questionRepository.create(newQuestion, { session });
+          newQuestions.push(newQuestion);
+        }
+
+        // Atribui as novas questões à nova seção
+        sectionCreated.questions = newQuestions;
+        await this.repository.updateOne(sectionCreated, { session });
+
+        // Adiciona a nova seção ao formulário
+        form.sections.push(sectionCreated);
+        await this.formRepository.updateOne(form, { session });
+
+        // Commit da transação
+        await session.commitTransaction();
+        await session.endSession();
+      } catch (error) {
+        await session.abortTransaction();
+        await session.endSession();
+        throw error;
+      }
+    } catch (error) {
+      throw new HttpException(
+        `Erro ao duplicar a seção: ${error.message || error}`,
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 }
