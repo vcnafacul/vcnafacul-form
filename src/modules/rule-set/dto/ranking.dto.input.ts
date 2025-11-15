@@ -1,11 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  ArrayNotEmpty,
-  ArrayUnique,
-  IsArray,
-  IsMongoId,
-  IsString,
-} from 'class-validator';
+import { ArrayNotEmpty, ArrayUnique, IsArray, IsMongoId, IsString } from 'class-validator';
 
 export class RankingDtoInput {
   @ApiProperty()

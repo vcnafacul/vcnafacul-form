@@ -10,9 +10,7 @@ export class MongoExceptionFilter implements ExceptionFilter {
     //Duplicate key
     if (error.code === 11000) {
       // Tenta extrair o(s) campo(s) únicos
-      const fields = Object.keys(
-        (error as any).keyPattern ?? (error as any).keyValue ?? {},
-      );
+      const fields = Object.keys((error as any).keyPattern ?? (error as any).keyValue ?? {});
       const fieldList = fields.length ? fields.join(', ') : 'unique field';
 
       return res.status(409).json({
@@ -35,10 +33,9 @@ export class MongoExceptionFilter implements ExceptionFilter {
       });
     }
 
-    return res.status(error.status).json({
+    return res.status(error.status ?? 500).json({
       statusCode: error?.status ?? 500,
-      error:
-        error?.response?.message?.map((m) => m).join(', ') ?? error.message,
+      error: error?.response?.message?.map((m) => m).join(', ') ?? error.message,
       message: error.message,
     });
   }

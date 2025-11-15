@@ -23,9 +23,7 @@ export class ConfigSchemaValidationPipe implements PipeTransform {
     const ok = validator(value?.config);
     if (!ok) {
       const msg = ajv.errorsText(validator.errors, { dataVar: 'config' });
-      throw new BadRequestException(
-        `Config inválido para strategy '${strategy}': ${msg}`,
-      );
+      throw new BadRequestException(`Config inválido para strategy '${strategy}': ${msg}`);
     }
 
     // validações de negócio adicionais (ex.: ranges não sobrepostos)
@@ -36,9 +34,7 @@ export class ConfigSchemaValidationPipe implements PipeTransform {
     return value;
   }
 
-  private assertRanges(
-    ranges: Array<{ min?: number | null; max?: number | null }>,
-  ) {
+  private assertRanges(ranges: Array<{ min?: number | null; max?: number | null }>) {
     // checa ordenação e sobreposição (exemplo simples)
     const norm = ranges
       .map((r) => ({

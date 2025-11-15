@@ -1,7 +1,7 @@
-import { Types } from 'mongoose';
-import { Question } from './question.schema';
-import { createRepository } from 'src/common/base/base.repository';
 import { Injectable } from '@nestjs/common';
+import { Types } from 'mongoose';
+import { createRepository } from 'src/common/base/base.repository';
+import { Question } from './question.schema';
 
 @Injectable()
 export class QuestionRepository extends createRepository(Question) {

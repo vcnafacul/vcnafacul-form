@@ -1,21 +1,21 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Types } from 'mongoose';
+import { GetAllInput } from 'src/common/base/interfaces/get-all.input';
+import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
+import { RuleType } from '../rule/enum/rule-type';
+import { RuleRepository } from '../rule/rule.repository';
+import { SubmissionRepository } from '../submission/submission.repository';
+import { Submission } from '../submission/submission.schema';
+import { CreateRuleSetDtoInput } from './dto/create-rule-set.dto.input';
+import { RankingDtoInput } from './dto/ranking.dto.input';
+import { RankingDto, RankingDtoOutput } from './dto/ranking.dto.output';
+import { Action, UpdateRuleSetWithActionDtoInput } from './dto/update-rule-set.dto.input';
 import { RuleSetRepository } from './rule-set.repository';
 import { RuleSet } from './rule-set.schema';
-import { CreateRuleSetDtoInput } from './dto/create-rule-set.dto.input';
-import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
-import { GetAllInput } from 'src/common/base/interfaces/get-all.input';
-import { RuleRepository } from '../rule/rule.repository';
-import {
-  Action,
-  UpdateRuleSetWithActionDtoInput,
-} from './dto/update-rule-set.dto.input';
-import { RuleType } from '../rule/enum/rule-type';
-import { RankingDto, RankingDtoOutput } from './dto/ranking.dto.output';
-import { RankingDtoInput } from './dto/ranking.dto.input';
-import { SubmissionRepository } from '../submission/submission.repository';
-import { Types } from 'mongoose';
-import { Submission } from '../submission/submission.schema';
-import { Rule } from '../rule/rule.schema';
+import { plainToInstance } from 'class-transformer';
+import { getGroupRankingTie } from './utils/get-group-ranking-tie';
+import { getRankingByPoint } from './utils/get-ranking-by-point';
+import { resolveAllTies } from './utils/tie-breaker';
 
 @Injectable()
 export class RuleSetSevice {
@@ -60,13 +60,9 @@ export class RuleSetSevice {
       }
     } else {
       if (rule.type === RuleType.Score) {
-        ruleSet.scoringRules = ruleSet.scoringRules.filter(
-          (r) => r._id !== rule._id,
-        );
+        ruleSet.scoringRules = ruleSet.scoringRules.filter((r) => r._id !== rule._id);
       } else {
-        ruleSet.tieBreakerRules = ruleSet.tieBreakerRules.filter(
-          (r) => r._id !== rule._id,
-        );
+        ruleSet.tieBreakerRules = ruleSet.tieBreakerRules.filter((r) => r._id !== rule._id);
       }
     }
 
@@ -75,42 +71,18 @@ export class RuleSetSevice {
     return ruleSet;
   }
 
-  public async rankFormUsers({
-    ruleSetId,
-    users,
-  }: RankingDtoInput): Promise<RankingDtoOutput> {
+  public async rankFormUsers({ ruleSetId, users }: RankingDtoInput): Promise<RankingDtoOutput> {
     const ruleSet = await this.getRuleSet(ruleSetId);
-    const subs = await this.getSubmissions(users, ruleSet.form._id!);
+    const subs = await this.getSubmissions(users, ruleSet.form._id);
+    const subByUser = new Map<string, Submission>(subs.map((s) => [s.userId, s]));
 
-    const subByUser = new Map<string, Submission>(
-      subs.map((s) => [s.userId, s]),
-    );
-
-    const ranking: RankingDto[] = [];
-    for (const user of users) {
-      const sub = subByUser.get(user);
-      if (!sub) {
-        ranking.push({ userId: user, totalScore: 0 });
-        continue;
-      }
-
-      const answersByQ = new Map<string, any>(
-        sub.answers.map((a: { questionId: Types.ObjectId; value: any }) => [
-          a.questionId.toString(),
-          a.value,
-        ]),
-      );
-      let total = 0;
-      for (const rule of ruleSet.scoringRules) {
-        const qId = String(rule.question._id!);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const value: any = answersByQ.get(qId);
-        total += this.applyScoreRule(rule, value);
-      }
-      ranking.push({ userId: user, totalScore: total });
+    const rank = getRankingByPoint(subByUser, ruleSet, users);
+    const ties = getGroupRankingTie(rank);
+    if (ruleSet.tieBreakerRules.length === 0) {
+      return new RankingDtoOutput(plainToInstance(RankingDto, rank));
     }
-
-    return new RankingDtoOutput(ranking);
+    const tieB = resolveAllTies(ties, rank, ruleSet, subByUser);
+    return new RankingDtoOutput(plainToInstance(RankingDto, tieB));
   }
 
   private async getRuleSet(id: string): Promise<RuleSet> {
@@ -124,35 +96,14 @@ export class RuleSetSevice {
     return ruleSet;
   }
 
-  private async getSubmissions(
-    users: string[],
-    formId: Types.ObjectId,
-  ): Promise<Submission[]> {
-    const submissions = await this.submissionRepository.findByUsersId(
-      users,
-      formId,
-    );
+  private async getSubmissions(users: string[], formId: Types.ObjectId): Promise<Submission[]> {
+    const submissions = await this.submissionRepository.findByUsersId(users, formId);
     if (submissions.length === 0) {
-      throw new HttpException(
-        'User Submissions not found',
-        HttpStatus.NOT_FOUND,
-      );
+      throw new HttpException('User Submissions not found', HttpStatus.NOT_FOUND);
     }
     if (submissions.length !== users.length) {
-      throw new HttpException(
-        'Not found all user submissions',
-        HttpStatus.NOT_FOUND,
-      );
+      throw new HttpException('Not found all user submissions', HttpStatus.NOT_FOUND);
     }
     return submissions;
-  }
-
-  private applyScoreRule(rule: Rule, value: any): number {
-    for (const [key, point] of Object.entries(rule.config.points)) {
-      if (key === value) {
-        return point as number;
-      }
-    }
-    return 0;
   }
 }

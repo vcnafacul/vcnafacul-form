@@ -27,6 +27,7 @@ export class RuleSevice {
     }
 
     const rule = plainToInstance(Rule, dto);
+    rule.question = question;
     return await this.repository.create(rule);
   }
 

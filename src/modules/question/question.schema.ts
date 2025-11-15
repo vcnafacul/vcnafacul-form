@@ -1,8 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 import { BaseSchema } from 'src/common/base/base.schema';
-import { AnswerType } from './enum/answer-type';
 import { AnswerCollectionType } from './enum/answer-collection-type';
-import { HydratedDocument } from 'mongoose';
+import { AnswerType } from './enum/answer-type';
+import { ComplexCondition } from './types/complex-condition';
 
 @Schema({ timestamps: true, versionKey: false })
 export class Question extends BaseSchema {
@@ -17,6 +18,9 @@ export class Question extends BaseSchema {
 
   @Prop({ enum: AnswerCollectionType, default: AnswerCollectionType.Single })
   collection: AnswerCollectionType;
+
+  @Prop({ type: ComplexCondition, default: null })
+  conditions?: ComplexCondition;
 
   @Prop({
     type: [String],
@@ -35,6 +39,21 @@ export class Question extends BaseSchema {
 
   @Prop({ default: true })
   active: boolean; // Se a questão está ativa no banco
+
+  static createCopy(question: Question): Question {
+    return {
+      _id: new Types.ObjectId(),
+      text: `${question.text}`,
+      helpText: `${question.helpText}`,
+      answerType: question.answerType,
+      collection: question.collection,
+      conditions: question.conditions,
+      options: question.options,
+      active: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+  }
 }
 
 export type QuestionDocument = HydratedDocument<Question>;

@@ -1,11 +1,11 @@
+import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import questionSchema, { Question } from '../question/question.schema';
-import { Module } from '@nestjs/common';
-import sectionSchema, { Section } from '../section/section.schema';
-import { QuestionSevice } from './question.service';
-import { QuestionRepository } from './question.repository';
-import { QuestionController } from './question.controller';
 import { SectionModule } from '../section/section.module';
+import sectionSchema, { Section } from '../section/section.schema';
+import { QuestionController } from './question.controller';
+import { QuestionRepository } from './question.repository';
+import { QuestionSevice } from './question.service';
 
 @Module({
   imports: [

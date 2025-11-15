@@ -1,0 +1,60 @@
+name: Você na Facul Form
+on:
+  pull_request:
+    branches: ['develop']
+    types: [opened, synchronize, reopened, closed]
+
+jobs:
+  CI:
+    if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened')
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Iniciando CI
+        run: echo "Iniciando CI"
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 20.x
+      - name: Install depends
+        run: yarn
+      - name: Build app Você na Facul Form
+        run: yarn build
+      # - name: Run Test app MS Você na Facul Form
+      #   run: yarn test
+  PUSH:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Iniciando PUSH
+        run: echo "Iniciando PUSH"
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 20.x
+      - name: Install depends
+        run: yarn
+      - name: Build app vCnafacul
+        run: yarn build
+      - name: Build Image
+        run: docker build -t formsvcnafacul -f form.dockerfile .
+      - name: docker tags
+        run: docker tag formsvcnafacul vcnafacul/form:latest
+      - name: docker login
+        run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USER }} --password-stdin
+      - name: Image Push
+        run: docker push vcnafacul/form:latest
+  DEPLOY_HOMOL:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && github.base_ref == 'develop'
+    needs: PUSH
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy em Homolog (Oracle VPS)
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST_HOMOL }}
+          username: ${{ secrets.DEPLOY_USER_HOMOL }}
+          key: ${{ secrets.DEPLOY_KEY_HOMOL }}
+          script: |
+            chmod +x ~/subir_form.sh
+            ~/subir_form.sh

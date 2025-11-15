@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { BaseSchema } from 'src/common/base/base.schema';
 import { HydratedDocument, Types } from 'mongoose';
+import { BaseSchema } from 'src/common/base/base.schema';
 import { Question } from '../question/question.schema';
 
 @Schema({ timestamps: true, versionKey: false })
@@ -16,6 +16,18 @@ export class Section extends BaseSchema {
 
   @Prop({ default: true })
   active: boolean;
+
+  static createCopy(section: Section): Section {
+    return {
+      ...section,
+      _id: new Types.ObjectId(),
+      name: `${section.name}_${new Date().getTime()}`,
+      questions: [],
+      active: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+  }
 }
 
 export type SectionDocument = HydratedDocument<Section>;

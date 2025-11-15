@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GetAllDtoOutput } from 'src/common/base/dto/get-all.dto.output';
-import { QuestionSevice } from './question.service';
-import { Question } from './question.schema';
 import { CreateQuestionDtoInput } from './dto/create-question.dto.input';
 import { GetAllQuestionDtoInput } from './dto/get-all-question.dto.input';
+import { UpdateQuestionDtoInput } from './dto/update-question.dto.input';
+import { Question } from './question.schema';
+import { QuestionSevice } from './question.service';
 
 @ApiTags('Perguntas')
 @Controller('v1/question')
@@ -25,7 +26,13 @@ export class QuestionController {
     - multiple: múltiplas respostas permitidas
 
     **Options**:
-    - é só obrigatorio quando AnswerType for Options`,
+    - é só obrigatorio quando AnswerType for Options
+
+    **Conditions** (opcional):
+    - Define condições para exibição da pergunta
+    - Permite criar regras baseadas em respostas de outras perguntas
+    - Suporta operadores: Equal, NotEqual, GreaterThan, LessThan, Contains, etc.
+    - Lógica de combinação: And, Or`,
     type: CreateQuestionDtoInput,
   })
   async create(@Body() body: CreateQuestionDtoInput): Promise<Question> {
@@ -45,9 +52,65 @@ export class QuestionController {
   @ApiResponse({
     description: 'buscar todas perguntas paginadas',
   })
-  async find(
-    @Query() qyery: GetAllQuestionDtoInput,
-  ): Promise<GetAllDtoOutput<Question>> {
+  async find(@Query() qyery: GetAllQuestionDtoInput): Promise<GetAllDtoOutput<Question>> {
     return await this.service.find(qyery);
+  }
+
+  @Put(':id')
+  @ApiBody({
+    description: `
+    **AnswerType**:
+    - Text: resposta textual livre
+    - Number: resposta numérica
+    - Boolean: verdadeiro/falso
+    - Options: seleção de opções predefinidas
+
+    **AnswerCollectionType**:
+    - single: apenas uma resposta
+    - multiple: múltiplas respostas permitidas
+
+    **Options**:
+    - é só obrigatorio quando AnswerType for Options
+
+    **Conditions** (opcional):
+    - Define condições para exibição da pergunta
+    - Permite criar regras baseadas em respostas de outras perguntas
+    - Suporta operadores: Equal, NotEqual, GreaterThan, LessThan, Contains, etc.
+    - Lógica de combinação: And, Or
+    
+    **Nota**: Todos os campos são opcionais na edição. Apenas os campos fornecidos serão atualizados.`,
+    type: UpdateQuestionDtoInput,
+  })
+  @ApiResponse({
+    description: 'atualizar pergunta por id',
+    type: Question,
+  })
+  async update(@Param('id') id: string, @Body() body: UpdateQuestionDtoInput): Promise<Question> {
+    return await this.service.update(id, body);
+  }
+
+  @Delete(':id')
+  @ApiResponse({
+    description: 'excluir questão por id (soft delete)',
+    status: 200,
+  })
+  @ApiResponse({
+    description: 'Questão não encontrada',
+    status: 404,
+  })
+  @ApiResponse({
+    description: 'Erro interno na exclusão',
+    status: 400,
+  })
+  async delete(@Param('id') id: string): Promise<void> {
+    await this.service.delete(id);
+  }
+
+  @Patch(':id/set-active')
+  @ApiResponse({
+    description: 'define questão ativa',
+  })
+  async setActive(@Param('id') id: string): Promise<void> {
+    await this.service.setActive(id);
   }
 }

@@ -1,17 +1,19 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { FormRepository } from './form.repository';
-import { CreateFormDtoInput } from './dto/create-form.dto.input';
-import { Form } from './form.schema';
-import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
 import { GetAllInput } from 'src/common/base/interfaces/get-all.input';
+import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
 import { SectionRepository } from '../section/section.repository';
-import { AddSectionDtoInput } from './dto/add-section.dto.input';
+import { CreateFormDtoInput } from './dto/create-form.dto.input';
+import { FormRepository } from './form.repository';
+import { Form } from './form.schema';
+import { formFullMapper } from '../form-full/utils/form-full.mapper';
+import { FormFullRepository } from '../form-full/form-full.repository';
 
 @Injectable()
 export class FormSevice {
   constructor(
     private readonly repository: FormRepository,
     private readonly sectionRepository: SectionRepository,
+    private readonly formFullRepository: FormFullRepository,
   ) {}
 
   async create(dto: CreateFormDtoInput): Promise<Form> {
@@ -22,24 +24,48 @@ export class FormSevice {
   }
 
   async findById(id: string): Promise<Form | null> {
-    return await this.repository.findById(id);
+    return await this.repository.findBy({ _id: id });
   }
 
   async find(data: GetAllInput): Promise<GetAllOutput<Form>> {
     return await this.repository.find(data);
   }
 
-  async addSection({ formId, sectionId }: AddSectionDtoInput) {
-    const form = await this.repository.findById(formId);
+  async setActive(formId: string) {
+    const form = await this.repository.findBy({ _id: formId });
     if (!form) {
       throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
     }
-    const section = await this.sectionRepository.findById(sectionId);
-    if (!section) {
-      throw new HttpException('section id not exist', HttpStatus.NOT_FOUND);
+    const oldForm = await this.repository.findBy({ active: true, deleted: false });
+    if (oldForm) {
+      oldForm.active = false;
+      await this.repository.updateOne(oldForm);
     }
-    form.sections.push(section);
+    form.active = true;
     await this.repository.updateOne(form);
-    return form;
+  }
+
+  async hasActiveForm(): Promise<boolean> {
+    const form = await this.repository.findActiveFormFull();
+    if (!form || form.deleted || form.sections.length === 0) {
+      throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
+    }
+    return true;
+  }
+
+  // ao inves de buscar por id, deve buscar o formulario ativo, que é um unico formulario
+  async createFormFull(inscriptionId: string): Promise<string> {
+    const form = await this.repository.findActiveFormFull();
+    if (!form || form.deleted || form.sections.length === 0) {
+      throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
+    }
+
+    const formFull = formFullMapper(form, inscriptionId);
+
+    // criar uma transação para garantir a consistência dos dados
+
+    const formFullCreated = await this.formFullRepository.create(formFull);
+
+    return formFullCreated._id.toString();
   }
 }

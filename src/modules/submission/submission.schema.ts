@@ -1,22 +1,35 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { BaseSchema } from 'src/common/base/base.schema';
 import { HydratedDocument, SchemaTypes, Types } from 'mongoose';
-import { Form } from '../form/form.schema';
+import { BaseSchema } from 'src/common/base/base.schema';
+import { FormFull } from '../form-full/schema/form-full.schema';
 
 @Schema({ timestamps: true, versionKey: false })
 export class Submission extends BaseSchema {
-  @Prop({ type: Types.ObjectId, ref: 'Form', required: true })
-  form: Form;
+  @Prop({ type: Types.ObjectId, ref: 'FormFull', required: true })
+  form: FormFull;
 
   @Prop({ required: true })
   userId: string;
+
+  @Prop({ required: true })
+  studentId: string;
+
+  @Prop({ required: true })
+  name: string;
+
+  @Prop({ required: true })
+  email: string;
+
+  @Prop({ required: true })
+  birthday: Date;
 
   @Prop({
     type: [
       {
         questionId: { type: Types.ObjectId, ref: 'Question', required: true },
         // value pode ser string|number|boolean|string[] dependendo do tipo
-        value: { type: SchemaTypes.Mixed, required: true },
+        answer: { type: SchemaTypes.Mixed, required: true },
+        question: { type: String, required: true },
       },
     ],
     default: [],
