@@ -19,6 +19,10 @@ export class FormRepository extends createRepository(Form) {
     return await this.model.findOne({}).populate('sections').exec();
   }
 
+  async findActiveForm(): Promise<Form | null> {
+    return await this.model.findOne({ active: true, deleted: false }).exec();
+  }
+
   async findActiveFormFull(): Promise<Form | null> {
     return await this.model
       .findOne({ active: true, deleted: false })
