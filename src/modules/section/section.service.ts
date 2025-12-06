@@ -20,20 +20,22 @@ export class SectionSevice {
 
   async create(dto: CreateSectionDtoInput): Promise<Section> {
     try {
-      const form = await this.formRepository.findOneWithSections();
+      const form = await this.formRepository.findActiveForm();
       if (!form) {
         throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
       }
       const section = new Section();
       section.name = dto.name;
 
-      form.sections.push(section);
-
       const session = await this.repository.startSession();
       session.startTransaction();
 
-      await this.formRepository.updateOne(form, { session });
+      // Primeiro cria a seção no banco para obter o _id
       const sectionCreated = await this.repository.create(section, { session });
+
+      // Depois adiciona apenas o _id da seção criada ao form
+      form.sections.push(sectionCreated._id as any);
+      await this.formRepository.updateOne(form, { session });
 
       await session.commitTransaction();
       await session.endSession();
@@ -151,15 +153,21 @@ export class SectionSevice {
         throw new HttpException('Seção não encontrada', HttpStatus.NOT_FOUND);
       }
 
-      // Busca o formulário para adicionar a nova seção
-      const form = await this.formRepository.findActiveFormFull();
-      if (!form) {
+      // Busca o formulário para validação (populado)
+      const formFull = await this.formRepository.findActiveFormFull();
+      if (!formFull) {
         throw new HttpException('Formulário não encontrado', HttpStatus.NOT_FOUND);
       }
 
       // valida se a seção é uma seção do formulário
-      if (!form.sections.some((s) => s._id.toString() === originalSection._id.toString())) {
+      if (!formFull.sections.some((s) => s._id.toString() === originalSection._id.toString())) {
         throw new HttpException('Seção não encontrada no formulário', HttpStatus.NOT_FOUND);
+      }
+
+      // Busca o formulário sem populate para ter os IDs corretos no array sections
+      const form = await this.formRepository.findActiveForm();
+      if (!form) {
+        throw new HttpException('Formulário não encontrado', HttpStatus.NOT_FOUND);
       }
 
       const newSection = Section.createCopy(originalSection);
@@ -173,19 +181,19 @@ export class SectionSevice {
         const sectionCreated = await this.repository.create(newSection, { session });
 
         // Duplica todas as questões da seção original
-        const newQuestions: Question[] = [];
+        const newQuestionIds: any[] = [];
         for (const originalQuestion of originalSection.questions) {
           const newQuestion = Question.createCopy(originalQuestion);
-          await this.questionRepository.create(newQuestion, { session });
-          newQuestions.push(newQuestion);
+          const questionCreated = await this.questionRepository.create(newQuestion, { session });
+          newQuestionIds.push(questionCreated._id);
         }
 
-        // Atribui as novas questões à nova seção
-        sectionCreated.questions = newQuestions;
+        // Atualiza a seção com os IDs das novas questões
+        sectionCreated.questions = newQuestionIds as Question[];
         await this.repository.updateOne(sectionCreated, { session });
 
-        // Adiciona a nova seção ao formulário
-        form.sections.push(sectionCreated);
+        // Adiciona apenas o _id da nova seção ao formulário
+        form.sections.push(sectionCreated._id as any);
         await this.formRepository.updateOne(form, { session });
 
         // Commit da transação
