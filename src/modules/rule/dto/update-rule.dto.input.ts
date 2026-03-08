@@ -3,18 +3,21 @@ import { IsEnum, IsMongoId, IsObject, IsOptional, IsString } from 'class-validat
 import { RuleType } from '../enum/rule-type';
 import { Strategy } from '../enum/strategy';
 
-export class CreateRuleDtoInput {
-  @ApiProperty()
+export class UpdateRuleDtoInput {
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
-  name: string;
+  name?: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
-  description: string;
+  description?: string;
 
-  @ApiProperty({ enum: RuleType })
+  @ApiProperty({ enum: RuleType, required: false })
+  @IsOptional()
   @IsEnum(RuleType)
-  type: RuleType;
+  type?: RuleType;
 
   @ApiProperty({ enum: Strategy, required: false })
   @IsOptional()
@@ -26,11 +29,12 @@ export class CreateRuleDtoInput {
   @IsMongoId()
   questionId?: string;
 
-  @ApiProperty({ type: Object, required: true })
+  @ApiProperty({ type: Object, required: false })
+  @IsOptional()
   @IsObject()
-  config: any;
+  config?: any;
 
-  @ApiProperty({ required: false, default: 1 })
+  @ApiProperty({ required: false })
   @IsOptional()
   weight?: number;
 }

@@ -17,4 +17,13 @@ export class RuleSetRepository extends createRepository(RuleSet) {
       .populate({ path: 'tieBreakerRules' })
       .exec();
   }
+
+  async findByFormId(formId: Types.ObjectId): Promise<RuleSet | null> {
+    return await this.model
+      .findOne({ form: formId })
+      .populate('form')
+      .populate({ path: 'scoringRules' })
+      .populate({ path: 'tieBreakerRules' })
+      .exec();
+  }
 }
