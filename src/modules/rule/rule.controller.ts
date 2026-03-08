@@ -1,16 +1,17 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GetAllDtoInput } from 'src/common/base/dto/get-all.dto.input';
 import { GetAllDtoOutput } from 'src/common/base/dto/get-all.dto.output';
 import { Rule } from './rule.schema';
 import { CreateRuleDtoInput } from './dto/create-rule.dto.input';
-import { RuleSevice } from './rule.service';
+import { UpdateRuleDtoInput } from './dto/update-rule.dto.input';
+import { RuleService } from './rule.service';
 import { ConfigSchemaValidationPipe } from './pipe/ajv-validations.pipe';
 
 @ApiTags('Regras')
 @Controller('v1/rule')
 export class RuleController {
-  constructor(private readonly service: RuleSevice) {}
+  constructor(private readonly service: RuleService) {}
 
   @Post()
   @ApiBody({
@@ -82,5 +83,22 @@ export class RuleController {
   })
   async find(@Query() qyery: GetAllDtoInput): Promise<GetAllDtoOutput<Rule>> {
     return await this.service.find(qyery);
+  }
+
+  @Put(':id')
+  @ApiResponse({
+    description: 'atualizar regra',
+    type: Rule,
+  })
+  async update(@Param('id') id: string, @Body() body: UpdateRuleDtoInput): Promise<Rule> {
+    return await this.service.update(id, body);
+  }
+
+  @Delete(':id')
+  @ApiResponse({
+    description: 'deletar regra',
+  })
+  async delete(@Param('id') id: string): Promise<void> {
+    return await this.service.delete(id);
   }
 }

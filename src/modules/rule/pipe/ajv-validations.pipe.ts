@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import Ajv from 'ajv';
 import { Strategy } from '../enum/strategy';
+import { computedInverseProportionalDefinition } from '../definition/computed-inverse-proportional';
+import { inverseProportionalDefinition } from '../definition/inverse-proportional';
 import { numericRangeDefinition } from '../definition/numeric-range';
 import { perOptionDefinition } from '../definition/per-option';
 import { CreateRuleDtoInput } from '../dto/create-rule.dto.input';
@@ -10,14 +12,18 @@ const ajv = new Ajv({ allErrors: true, allowUnionTypes: true });
 const compiled = {
   [Strategy.NumericRange]: ajv.compile(numericRangeDefinition),
   [Strategy.PerOption]: ajv.compile(perOptionDefinition),
+  [Strategy.InverseProportional]: ajv.compile(inverseProportionalDefinition),
+  [Strategy.ComputedInverseProportional]: ajv.compile(computedInverseProportionalDefinition),
 };
 
 @Injectable()
 export class ConfigSchemaValidationPipe implements PipeTransform {
   transform(value: CreateRuleDtoInput) {
-    const strategy: Strategy = value?.strategy;
-    const validator = compiled[strategy];
+    const strategy = value?.strategy;
 
+    if (!strategy) return value; // sem strategy → inferida pelo service
+
+    const validator = compiled[strategy];
     if (!validator) return value; // sem schema → sem validação
 
     const ok = validator(value?.config);

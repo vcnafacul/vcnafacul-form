@@ -32,5 +32,5 @@ export class Rule extends BaseSchema {
   active: boolean;
 }
 
-export type uleDocument = HydratedDocument<Rule>;
+export type RuleDocument = HydratedDocument<Rule>;
 export default SchemaFactory.createForClass(Rule);

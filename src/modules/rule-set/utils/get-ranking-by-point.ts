@@ -5,6 +5,7 @@ import { Rank } from '../value-object/rank';
 import { UserByPoint } from '../value-object/user-by-point';
 import { convertUserPointToRank } from './convert-user-point-to-rank';
 import { applyScoreRule } from './apply-score-rule';
+import { Strategy } from 'src/modules/rule/enum/strategy';
 
 export function getRankingByPoint(
   subs: Map<string, Submission>,
@@ -20,17 +21,21 @@ export function getRankingByPoint(
     }
 
     const answersByQ = new Map<string, any>(
-      sub.answers.map((a: { questionId: Types.ObjectId; value: any }) => [
+      sub.answers.map((a: { questionId: Types.ObjectId; answer: any }) => [
         a.questionId.toString(),
-        a.value,
+        a.answer,
       ]),
     );
     let total = 0;
     for (const rule of ruleSet.scoringRules) {
-      const qId = String(rule.question._id);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const value: any = answersByQ.get(qId);
-      total += applyScoreRule(rule, value);
+      if (rule.strategy === Strategy.ComputedInverseProportional) {
+        total += applyScoreRule(rule, null, answersByQ);
+      } else {
+        const qId = String(rule.question._id);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const value: any = answersByQ.get(qId);
+        total += applyScoreRule(rule, value);
+      }
     }
     ranking.push({ userId: user, totalScore: total });
   }

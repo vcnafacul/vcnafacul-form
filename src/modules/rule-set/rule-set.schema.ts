@@ -4,6 +4,12 @@ import { BaseSchema } from 'src/common/base/base.schema';
 import { Rule } from '../rule/rule.schema';
 import { FormFull } from '../form-full/schema/form-full.schema';
 
+export class RankingEntry {
+  rank: number;
+  userId: string;
+  totalScore: number;
+}
+
 @Schema({ timestamps: true, versionKey: false })
 export class RuleSet extends BaseSchema {
   @Prop({ required: true, unique: true })
@@ -23,6 +29,12 @@ export class RuleSet extends BaseSchema {
     default: [],
   })
   tieBreakerRules: Rule[];
+
+  @Prop({ type: [{ rank: Number, userId: String, totalScore: Number }], default: null })
+  lastRanking: RankingEntry[] | null;
+
+  @Prop({ type: Date, default: null })
+  lastRankingAt: Date | null;
 }
 
 export type RuleSetDocument = HydratedDocument<RuleSet>;
