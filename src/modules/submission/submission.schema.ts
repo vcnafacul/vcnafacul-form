@@ -34,7 +34,7 @@ export class Submission extends BaseSchema {
     ],
     default: [],
   })
-  answers: Array<{ questionId: Types.ObjectId; value: any }>;
+  answers: Array<{ questionId: Types.ObjectId; answer: any; question: string }>;
 }
 
 export type SubmissionDocument = HydratedDocument<Submission>;

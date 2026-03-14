@@ -55,9 +55,9 @@ export function resolveTie(
     for (const item of group) {
       const sub = subs.get(item.userId)!;
       const answersByQ = new Map<string, any>(
-        sub.answers.map((a: { questionId: Types.ObjectId; value: any }) => [
+        sub.answers.map((a: { questionId: Types.ObjectId; answer: any }) => [
           a.questionId.toString(),
-          a.value,
+          a.answer,
         ]),
       );
 
@@ -97,16 +97,16 @@ export function resolveTie(
 }
 
 export function resolveAllTies(
-  tieroups: Rank[][],
+  tieGroups: Rank[][],
   rank: Rank[],
   ruleSet: RuleSet,
   subs: Map<string, Submission>,
 ): Rank[] {
   let updated = structuredClone(rank);
-  for (const group of tieroups) {
-    const tieBraekerRank = resolveTie(group, ruleSet, subs);
+  for (const group of tieGroups) {
+    const tieBreakerRank = resolveTie(group, ruleSet, subs);
     updated = updated.map((r) => {
-      const rankUser = tieBraekerRank.find((t) => t.userId === r.userId)!;
+      const rankUser = tieBreakerRank.find((t) => t.userId === r.userId)!;
       if (rankUser !== undefined && r.userId === rankUser.userId) {
         return rankUser;
       }
