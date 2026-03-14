@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { GetAllInput } from 'src/common/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
 import { QuestionRepository } from '../question/question.repository';
+import { OwnerType } from '../form/enum/owner-type.enum';
 import { CreateSectionDtoInput } from './dto/create-section.dto.input';
 import { SectionRepository } from './section.repository';
 import { Section } from './section.schema';
@@ -18,14 +19,19 @@ export class SectionSevice {
     private readonly formRepository: FormRepository,
   ) {}
 
-  async create(dto: CreateSectionDtoInput): Promise<Section> {
+  async create(dto: CreateSectionDtoInput, formId?: string): Promise<Section> {
     try {
-      const form = await this.formRepository.findActiveForm();
-      if (!form) {
-        throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
+      // Se formId foi passado, usa ele; senão fallback para form ativo (transição)
+      const form = formId
+        ? await this.formRepository.findById(formId)
+        : await this.formRepository.findActiveForm();
+
+      if (!form || form.deleted) {
+        throw new HttpException('Form not found', HttpStatus.NOT_FOUND);
       }
       const section = new Section();
       section.name = dto.name;
+      section.description = dto.description ?? '';
 
       const session = await this.repository.startSession();
       session.startTransaction();
@@ -52,6 +58,26 @@ export class SectionSevice {
 
   async find(data: GetAllInput): Promise<GetAllOutput<Section>> {
     return await this.repository.find(data);
+  }
+
+  async findByOwner(
+    ownerType: OwnerType,
+    ownerId: string | undefined,
+    data: GetAllInput,
+  ): Promise<GetAllOutput<Section>> {
+    const form =
+      ownerType === OwnerType.GLOBAL
+        ? await this.formRepository.findActiveGlobalForm()
+        : await this.formRepository.findActivePartnerForm(ownerId!);
+
+    if (!form) {
+      // Nenhum form existe para esse owner — retorna lista vazia
+      return { data: [], page: data.page, limit: data.limit, totalItems: 0 };
+    }
+
+    // Busca apenas as seções que pertencem a esse form
+    const sectionIds = form.sections.map((s) => s.toString());
+    return await this.repository.findByIds(sectionIds, data);
   }
 
   async setActive(sectionId: string) {
@@ -92,6 +118,9 @@ export class SectionSevice {
       throw new HttpException('Seção não encontrada', HttpStatus.NOT_FOUND);
     }
     section.name = dto.name;
+    if (dto.description !== undefined) {
+      section.description = dto.description;
+    }
     await this.repository.updateOne(section);
   }
 
@@ -153,19 +182,8 @@ export class SectionSevice {
         throw new HttpException('Seção não encontrada', HttpStatus.NOT_FOUND);
       }
 
-      // Busca o formulário para validação (populado)
-      const formFull = await this.formRepository.findActiveFormFull();
-      if (!formFull) {
-        throw new HttpException('Formulário não encontrado', HttpStatus.NOT_FOUND);
-      }
-
-      // valida se a seção é uma seção do formulário
-      if (!formFull.sections.some((s) => s._id.toString() === originalSection._id.toString())) {
-        throw new HttpException('Seção não encontrada no formulário', HttpStatus.NOT_FOUND);
-      }
-
-      // Busca o formulário sem populate para ter os IDs corretos no array sections
-      const form = await this.formRepository.findActiveForm();
+      // Busca o formulário dono da seção
+      const form = await this.formRepository.findFormBySectionId(sectionId);
       if (!form) {
         throw new HttpException('Formulário não encontrado', HttpStatus.NOT_FOUND);
       }

@@ -7,6 +7,7 @@ import { FormRepository } from './form.repository';
 import { Form } from './form.schema';
 import { formFullMapper } from '../form-full/utils/form-full.mapper';
 import { FormFullRepository } from '../form-full/form-full.repository';
+import { OwnerType } from './enum/owner-type.enum';
 
 @Injectable()
 export class FormSevice {
@@ -17,8 +18,27 @@ export class FormSevice {
   ) {}
 
   async create(dto: CreateFormDtoInput): Promise<Form> {
+    if (dto.ownerType === OwnerType.GLOBAL) {
+      const existing = await this.repository.findOne({
+        ownerType: OwnerType.GLOBAL,
+        deleted: false,
+      });
+      if (existing) {
+        throw new HttpException(
+          'Global Form already exists',
+          HttpStatus.CONFLICT,
+        );
+      }
+    }
+
     const form = new Form();
     form.name = dto.name;
+    form.ownerType = dto.ownerType;
+    form.ownerId = dto.ownerId ?? null;
+    // Partner forms são auto-ativados (1 form por partner)
+    if (dto.ownerType === OwnerType.PARTNER) {
+      form.active = true;
+    }
 
     return await this.repository.create(form);
   }
@@ -36,36 +56,74 @@ export class FormSevice {
     if (!form) {
       throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
     }
-    const oldForm = await this.repository.findBy({ active: true, deleted: false });
-    if (oldForm) {
-      oldForm.active = false;
-      await this.repository.updateOne(oldForm);
+
+    if (form.ownerType === OwnerType.GLOBAL) {
+      const oldForm = await this.repository.findActiveGlobalForm();
+      if (oldForm && oldForm._id.toString() !== form._id.toString()) {
+        oldForm.active = false;
+        await this.repository.updateOne(oldForm);
+      }
+    } else {
+      const oldForm = await this.repository.findActivePartnerForm(
+        form.ownerId!,
+      );
+      if (oldForm && oldForm._id.toString() !== form._id.toString()) {
+        oldForm.active = false;
+        await this.repository.updateOne(oldForm);
+      }
     }
+
     form.active = true;
     await this.repository.updateOne(form);
   }
 
-  async hasActiveForm(): Promise<boolean> {
-    const form = await this.repository.findActiveFormFull();
-    if (!form || form.deleted || form.sections.length === 0) {
-      throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
+  async hasActiveForm(partnerId?: string): Promise<boolean> {
+    const globalForm = await this.repository.findActiveGlobalFormFull();
+    const globalHasContent =
+      globalForm && !globalForm.deleted && globalForm.sections.length > 0;
+
+    let partnerHasContent = false;
+    if (partnerId) {
+      const partnerForm =
+        await this.repository.findActivePartnerFormFull(partnerId);
+      partnerHasContent =
+        !!partnerForm && !partnerForm.deleted && partnerForm.sections.length > 0;
+    }
+
+    if (!globalHasContent && !partnerHasContent) {
+      throw new HttpException(
+        'Nenhum formulário ativo com seções e questões foi encontrado',
+        HttpStatus.NOT_FOUND,
+      );
     }
     return true;
   }
 
-  // ao inves de buscar por id, deve buscar o formulario ativo, que é um unico formulario
-  async createFormFull(inscriptionId: string): Promise<string> {
-    const form = await this.repository.findActiveFormFull();
-    if (!form || form.deleted || form.sections.length === 0) {
-      throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
+  async createFormFull(
+    inscriptionId: string,
+    partnerId: string,
+  ): Promise<string> {
+    const globalForm = await this.repository.findActiveGlobalFormFull();
+    if (!globalForm || globalForm.deleted) {
+      throw new HttpException(
+        'No active global form configured',
+        HttpStatus.NOT_FOUND,
+      );
     }
 
-    const formFull = formFullMapper(form, inscriptionId);
+    const partnerForm =
+      await this.repository.findActivePartnerFormFull(partnerId);
 
-    // criar uma transação para garantir a consistência dos dados
+    const formFull = formFullMapper(globalForm, partnerForm, inscriptionId);
 
-    const formFullCreated = await this.formFullRepository.create(formFull);
+    if (formFull.sections.length === 0) {
+      throw new HttpException(
+        'Nenhuma seção ativa com questões foi encontrada nos formulários',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
 
-    return formFullCreated._id.toString();
+    const created = await this.formFullRepository.create(formFull);
+    return created._id.toString();
   }
 }
