@@ -9,6 +9,12 @@ export class SectionBase {
   @Prop({ required: true })
   name: string;
 
+  @Prop({ default: '' })
+  description: string;
+
+  @Prop({ default: false })
+  isGlobal: boolean;
+
   @Prop({ type: [QuestionBase], default: [] })
   questions: QuestionBase[];
 
