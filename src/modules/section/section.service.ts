@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { GetAllInput } from 'src/common/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
+import { OwnerContext } from 'src/common/interfaces/owner-context.interface';
 import { QuestionRepository } from '../question/question.repository';
 import { CreateSectionDtoInput } from './dto/create-section.dto.input';
 import { SectionRepository } from './section.repository';
@@ -18,11 +19,17 @@ export class SectionSevice {
     private readonly formRepository: FormRepository,
   ) {}
 
-  async create(dto: CreateSectionDtoInput): Promise<Section> {
+  async create(dto: CreateSectionDtoInput, ownerContext: OwnerContext): Promise<Section> {
     try {
-      const form = await this.formRepository.findActiveForm();
+      const form = await this.formRepository.findActiveForm(
+        ownerContext.ownerType,
+        ownerContext.ownerId,
+      );
       if (!form) {
-        throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
+        throw new HttpException(
+          'Nenhum formulário ativo encontrado para este proprietário',
+          HttpStatus.NOT_FOUND,
+        );
       }
       const section = new Section();
       section.name = dto.name;
@@ -30,10 +37,7 @@ export class SectionSevice {
       const session = await this.repository.startSession();
       session.startTransaction();
 
-      // Primeiro cria a seção no banco para obter o _id
       const sectionCreated = await this.repository.create(section, { session });
-
-      // Depois adiciona apenas o _id da seção criada ao form
       form.sections.push(sectionCreated._id as any);
       await this.formRepository.updateOne(form, { session });
 
@@ -50,11 +54,23 @@ export class SectionSevice {
     return await this.repository.findById(id);
   }
 
-  async find(data: GetAllInput): Promise<GetAllOutput<Section>> {
-    return await this.repository.find(data);
+  async find(data: GetAllInput, ownerContext: OwnerContext): Promise<GetAllOutput<Section>> {
+    const form = await this.formRepository.findActiveForm(
+      ownerContext.ownerType,
+      ownerContext.ownerId,
+    );
+    if (!form) {
+      return { data: [], page: 1, limit: 10, totalItems: 0 };
+    }
+    const sectionIds = form.sections.map((s: any) => s.toString());
+    return await this.repository.find({
+      ...data,
+      where: { _id: { $in: sectionIds } },
+    });
   }
 
-  async setActive(sectionId: string) {
+  async setActive(sectionId: string, ownerContext: OwnerContext) {
+    await this.formRepository.validateSectionOwnership(sectionId, ownerContext);
     const section = await this.repository.findById(sectionId);
     if (!section) {
       throw new HttpException('section id not exist', HttpStatus.NOT_FOUND);
@@ -63,21 +79,18 @@ export class SectionSevice {
     await this.repository.updateOne(section);
   }
 
-  async delete(id: string): Promise<void> {
-    // Verifica se a seção existe
+  async delete(id: string, ownerContext: OwnerContext): Promise<void> {
+    await this.formRepository.validateSectionOwnership(id, ownerContext);
     const section = await this.repository.findById(id);
     if (!section) {
       throw new HttpException('Seção não encontrada', HttpStatus.NOT_FOUND);
     }
-
-    // Verifica se existem questões associadas à seção
     if (section.questions && section.questions.length > 0) {
       throw new HttpException(
         'Não é possível excluir a seção pois existem questões associadas a ela',
         HttpStatus.CONFLICT,
       );
     }
-
     try {
       await this.repository.delete(id);
     } catch {
@@ -85,8 +98,8 @@ export class SectionSevice {
     }
   }
 
-  //função update de section que altera o nome da seção
-  async update(id: string, dto: UpdateSectionDtoInput): Promise<void> {
+  async update(id: string, dto: UpdateSectionDtoInput, ownerContext: OwnerContext): Promise<void> {
+    await this.formRepository.validateSectionOwnership(id, ownerContext);
     const section = await this.repository.findById(id);
     if (!section) {
       throw new HttpException('Seção não encontrada', HttpStatus.NOT_FOUND);
@@ -95,18 +108,20 @@ export class SectionSevice {
     await this.repository.updateOne(section);
   }
 
-  async reorderQuestions(sectionId: string, dto: ReorderQuestionsDtoInput): Promise<void> {
-    // Busca a seção
+  async reorderQuestions(
+    sectionId: string,
+    dto: ReorderQuestionsDtoInput,
+    ownerContext: OwnerContext,
+  ): Promise<void> {
+    await this.formRepository.validateSectionOwnership(sectionId, ownerContext);
     const section = await this.repository.findById(sectionId);
     if (!section) {
       throw new HttpException('Seção não encontrada', HttpStatus.NOT_FOUND);
     }
 
-    // Converte os IDs da seção para strings para comparação
     const sectionQuestionIds = section.questions.map((q) => q._id.toString());
     const receivedQuestionIds = dto.questionIds;
 
-    // Validação 1: Verifica se todos os IDs recebidos existem na seção
     const missingInSection = receivedQuestionIds.filter((id) => !sectionQuestionIds.includes(id));
     if (missingInSection.length > 0) {
       throw new HttpException(
@@ -115,7 +130,6 @@ export class SectionSevice {
       );
     }
 
-    // Validação 2: Verifica se todos os IDs da seção estão no array recebido
     const missingInReceived = sectionQuestionIds.filter((id) => !receivedQuestionIds.includes(id));
     if (missingInReceived.length > 0) {
       throw new HttpException(
@@ -124,16 +138,11 @@ export class SectionSevice {
       );
     }
 
-    // Validação 3: Verifica se a quantidade de IDs é igual
     if (sectionQuestionIds.length !== receivedQuestionIds.length) {
       throw new HttpException('A quantidade de questões não corresponde', HttpStatus.BAD_REQUEST);
     }
 
-    // Reordena as questões na seção baseado no novo array
-    // Cria um mapa para manter os objetos completos das questões
     const questionsMap = new Map(section.questions.map((q) => [q._id.toString(), q]));
-
-    // Reordena baseado no array recebido
     section.questions = receivedQuestionIds
       .map((id) => questionsMap.get(id))
       .filter((q) => q !== undefined);
@@ -145,42 +154,31 @@ export class SectionSevice {
     }
   }
 
-  async duplicate(sectionId: string): Promise<void> {
+  async duplicate(sectionId: string, ownerContext: OwnerContext): Promise<void> {
     try {
-      // Busca a seção original com suas questões
+      await this.formRepository.validateSectionOwnership(sectionId, ownerContext);
+
       const originalSection = await this.repository.findById(sectionId);
       if (!originalSection) {
         throw new HttpException('Seção não encontrada', HttpStatus.NOT_FOUND);
       }
 
-      // Busca o formulário para validação (populado)
-      const formFull = await this.formRepository.findActiveFormFull();
-      if (!formFull) {
-        throw new HttpException('Formulário não encontrado', HttpStatus.NOT_FOUND);
-      }
-
-      // valida se a seção é uma seção do formulário
-      if (!formFull.sections.some((s) => s._id.toString() === originalSection._id.toString())) {
-        throw new HttpException('Seção não encontrada no formulário', HttpStatus.NOT_FOUND);
-      }
-
-      // Busca o formulário sem populate para ter os IDs corretos no array sections
-      const form = await this.formRepository.findActiveForm();
+      const form = await this.formRepository.findActiveForm(
+        ownerContext.ownerType,
+        ownerContext.ownerId,
+      );
       if (!form) {
         throw new HttpException('Formulário não encontrado', HttpStatus.NOT_FOUND);
       }
 
       const newSection = Section.createCopy(originalSection);
 
-      // Inicia a sessão e transação
       const session = await this.repository.startSession();
       session.startTransaction();
 
       try {
-        // Cria a nova seção
         const sectionCreated = await this.repository.create(newSection, { session });
 
-        // Duplica todas as questões da seção original
         const newQuestionIds: any[] = [];
         for (const originalQuestion of originalSection.questions) {
           const newQuestion = Question.createCopy(originalQuestion);
@@ -188,15 +186,12 @@ export class SectionSevice {
           newQuestionIds.push(questionCreated._id);
         }
 
-        // Atualiza a seção com os IDs das novas questões
         sectionCreated.questions = newQuestionIds as Question[];
         await this.repository.updateOne(sectionCreated, { session });
 
-        // Adiciona apenas o _id da nova seção ao formulário
         form.sections.push(sectionCreated._id as any);
         await this.formRepository.updateOne(form, { session });
 
-        // Commit da transação
         await session.commitTransaction();
         await session.endSession();
       } catch (error) {
@@ -210,5 +205,13 @@ export class SectionSevice {
         HttpStatus.BAD_REQUEST,
       );
     }
+  }
+
+  async findGlobalActiveSections(): Promise<Section[]> {
+    const form = await this.formRepository.findActiveFormFull('GLOBAL', null);
+    if (!form) {
+      return [];
+    }
+    return form.sections as Section[];
   }
 }

@@ -1,6 +1,8 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { GetAllDtoOutput } from 'src/common/base/dto/get-all.dto.output';
+import { OwnerContext } from 'src/common/decorators/owner-context.decorator';
+import type { OwnerContext as OwnerContextType } from 'src/common/interfaces/owner-context.interface';
 import { CreateQuestionDtoInput } from './dto/create-question.dto.input';
 import { GetAllQuestionDtoInput } from './dto/get-all-question.dto.input';
 import { UpdateQuestionDtoInput } from './dto/update-question.dto.input';
@@ -35,8 +37,11 @@ export class QuestionController {
     - Lógica de combinação: And, Or`,
     type: CreateQuestionDtoInput,
   })
-  async create(@Body() body: CreateQuestionDtoInput): Promise<Question> {
-    return await this.service.create(body);
+  async create(
+    @Body() body: CreateQuestionDtoInput,
+    @OwnerContext() ownerContext: OwnerContextType,
+  ): Promise<Question> {
+    return await this.service.create(body, ownerContext);
   }
 
   @Get(':id')
@@ -52,8 +57,8 @@ export class QuestionController {
   @ApiResponse({
     description: 'buscar todas perguntas paginadas',
   })
-  async find(@Query() qyery: GetAllQuestionDtoInput): Promise<GetAllDtoOutput<Question>> {
-    return await this.service.find(qyery);
+  async find(@Query() query: GetAllQuestionDtoInput): Promise<GetAllDtoOutput<Question>> {
+    return await this.service.find(query);
   }
 
   @Put(':id')
@@ -77,7 +82,7 @@ export class QuestionController {
     - Permite criar regras baseadas em respostas de outras perguntas
     - Suporta operadores: Equal, NotEqual, GreaterThan, LessThan, Contains, etc.
     - Lógica de combinação: And, Or
-    
+
     **Nota**: Todos os campos são opcionais na edição. Apenas os campos fornecidos serão atualizados.`,
     type: UpdateQuestionDtoInput,
   })
@@ -85,8 +90,12 @@ export class QuestionController {
     description: 'atualizar pergunta por id',
     type: Question,
   })
-  async update(@Param('id') id: string, @Body() body: UpdateQuestionDtoInput): Promise<Question> {
-    return await this.service.update(id, body);
+  async update(
+    @Param('id') id: string,
+    @Body() body: UpdateQuestionDtoInput,
+    @OwnerContext() ownerContext: OwnerContextType,
+  ): Promise<Question> {
+    return await this.service.update(id, body, ownerContext);
   }
 
   @Delete(':id')
@@ -102,15 +111,21 @@ export class QuestionController {
     description: 'Erro interno na exclusão',
     status: 400,
   })
-  async delete(@Param('id') id: string): Promise<void> {
-    await this.service.delete(id);
+  async delete(
+    @Param('id') id: string,
+    @OwnerContext() ownerContext: OwnerContextType,
+  ): Promise<void> {
+    await this.service.delete(id, ownerContext);
   }
 
   @Patch(':id/set-active')
   @ApiResponse({
     description: 'define questão ativa',
   })
-  async setActive(@Param('id') id: string): Promise<void> {
-    await this.service.setActive(id);
+  async setActive(
+    @Param('id') id: string,
+    @OwnerContext() ownerContext: OwnerContextType,
+  ): Promise<void> {
+    await this.service.setActive(id, ownerContext);
   }
 }

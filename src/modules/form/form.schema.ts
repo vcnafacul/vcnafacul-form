@@ -5,8 +5,14 @@ import { Section } from '../section/section.schema';
 
 @Schema({ timestamps: true, versionKey: false })
 export class Form extends BaseSchema {
-  @Prop({ required: true, unique: true })
+  @Prop({ required: true })
   name: string;
+
+  @Prop({ required: true, enum: ['GLOBAL', 'PARTNER'] })
+  ownerType: string;
+
+  @Prop({ default: null })
+  ownerId: string | null;
 
   @Prop({
     type: [{ ref: 'Section', type: Types.ObjectId }],
@@ -19,4 +25,7 @@ export class Form extends BaseSchema {
 }
 
 export type FormDocument = HydratedDocument<Form>;
-export default SchemaFactory.createForClass(Form);
+
+const FormSchema = SchemaFactory.createForClass(Form);
+FormSchema.index({ name: 1, ownerType: 1, ownerId: 1 }, { unique: true });
+export default FormSchema;

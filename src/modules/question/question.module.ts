@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import questionSchema, { Question } from '../question/question.schema';
 import { SectionModule } from '../section/section.module';
+import { FormModule } from '../form/form.module';
 import sectionSchema, { Section } from '../section/section.schema';
 import { QuestionController } from './question.controller';
 import { QuestionRepository } from './question.repository';
@@ -14,6 +15,7 @@ import { QuestionSevice } from './question.service';
       { name: Question.name, schema: questionSchema },
     ]),
     SectionModule,
+    FormModule,
   ],
   providers: [QuestionSevice, QuestionRepository],
   controllers: [QuestionController],
