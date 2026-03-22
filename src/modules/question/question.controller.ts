@@ -1,8 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { HttpException, HttpStatus } from '@nestjs/common';
 import { GetAllDtoOutput } from 'src/common/base/dto/get-all.dto.output';
-import { OwnerContext } from 'src/common/decorators/owner-context.decorator';
-import type { OwnerContext as OwnerContextType } from 'src/common/interfaces/owner-context.interface';
+import {
+  OwnershipContextHelper,
+  OwnershipContext,
+} from 'src/common/guards/ownership-context.helper';
+import { FormRepository } from '../form/form.repository';
+import { SectionRepository } from '../section/section.repository';
+import { EnvService } from 'src/common/modules/env/env.service';
 import { CreateQuestionDtoInput } from './dto/create-question.dto.input';
 import { GetAllQuestionDtoInput } from './dto/get-all-question.dto.input';
 import { UpdateQuestionDtoInput } from './dto/update-question.dto.input';
@@ -12,7 +18,41 @@ import { QuestionSevice } from './question.service';
 @ApiTags('Perguntas')
 @Controller('v1/question')
 export class QuestionController {
-  constructor(private readonly service: QuestionSevice) {}
+  constructor(
+    private readonly service: QuestionSevice,
+    private readonly formRepository: FormRepository,
+    private readonly sectionRepository: SectionRepository,
+    private readonly envService: EnvService,
+  ) {}
+
+  private extractOwnership(headers: Record<string, string | undefined>): OwnershipContext {
+    return OwnershipContextHelper.extract(
+      headers,
+      this.envService.get('ADMIN_FORM_SECRET'),
+    );
+  }
+
+  private async validateQuestionOwnership(
+    sectionId: string,
+    ctx: OwnershipContext,
+  ): Promise<void> {
+    const form = await this.formRepository.findFormBySectionId(sectionId);
+    if (!form) {
+      throw new HttpException('Form not found for section', HttpStatus.NOT_FOUND);
+    }
+    OwnershipContextHelper.validateOwnership(ctx, form);
+  }
+
+  private async findSectionByQuestionId(questionId: string): Promise<string> {
+    const section = await this.sectionRepository.model.findOne({
+      questions: questionId,
+      deleted: false,
+    });
+    if (!section) {
+      throw new HttpException('Section not found for question', HttpStatus.NOT_FOUND);
+    }
+    return section._id.toString();
+  }
 
   @Post()
   @ApiBody({
@@ -38,10 +78,12 @@ export class QuestionController {
     type: CreateQuestionDtoInput,
   })
   async create(
+    @Headers() headers: Record<string, string | undefined>,
     @Body() body: CreateQuestionDtoInput,
-    @OwnerContext() ownerContext: OwnerContextType,
   ): Promise<Question> {
-    return await this.service.create(body, ownerContext);
+    const ctx = this.extractOwnership(headers);
+    await this.validateQuestionOwnership(body.sectionId, ctx);
+    return await this.service.create(body);
   }
 
   @Get(':id')
@@ -91,11 +133,14 @@ export class QuestionController {
     type: Question,
   })
   async update(
+    @Headers() headers: Record<string, string | undefined>,
     @Param('id') id: string,
     @Body() body: UpdateQuestionDtoInput,
-    @OwnerContext() ownerContext: OwnerContextType,
   ): Promise<Question> {
-    return await this.service.update(id, body, ownerContext);
+    const ctx = this.extractOwnership(headers);
+    const sectionId = await this.findSectionByQuestionId(id);
+    await this.validateQuestionOwnership(sectionId, ctx);
+    return await this.service.update(id, body);
   }
 
   @Delete(':id')
@@ -112,10 +157,13 @@ export class QuestionController {
     status: 400,
   })
   async delete(
+    @Headers() headers: Record<string, string | undefined>,
     @Param('id') id: string,
-    @OwnerContext() ownerContext: OwnerContextType,
   ): Promise<void> {
-    await this.service.delete(id, ownerContext);
+    const ctx = this.extractOwnership(headers);
+    const sectionId = await this.findSectionByQuestionId(id);
+    await this.validateQuestionOwnership(sectionId, ctx);
+    await this.service.delete(id);
   }
 
   @Patch(':id/set-active')
@@ -123,9 +171,12 @@ export class QuestionController {
     description: 'define questão ativa',
   })
   async setActive(
+    @Headers() headers: Record<string, string | undefined>,
     @Param('id') id: string,
-    @OwnerContext() ownerContext: OwnerContextType,
   ): Promise<void> {
-    await this.service.setActive(id, ownerContext);
+    const ctx = this.extractOwnership(headers);
+    const sectionId = await this.findSectionByQuestionId(id);
+    await this.validateQuestionOwnership(sectionId, ctx);
+    await this.service.setActive(id);
   }
 }

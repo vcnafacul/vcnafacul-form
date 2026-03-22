@@ -1,8 +1,8 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { Types } from 'mongoose';
 import { createRepository } from 'src/common/base/base.repository';
-import { OwnerContext } from 'src/common/interfaces/owner-context.interface';
 import { Form } from './form.schema';
-import { Section } from '../section/section.schema';
+import { OwnerType } from './enum/owner-type.enum';
 
 @Injectable()
 export class FormRepository extends createRepository(Form) {
@@ -27,9 +27,30 @@ export class FormRepository extends createRepository(Form) {
       .exec();
   }
 
-  async findActiveFormFull(ownerType: string, ownerId: string | null): Promise<Form | null> {
+  /**
+   * @deprecated Use findActiveGlobalFormFull() or findActivePartnerFormFull() instead
+   */
+  async findActiveFormFull(ownerType?: string, ownerId?: string | null): Promise<Form | null> {
+    if (ownerType && ownerType === OwnerType.GLOBAL) {
+      return await this.findActiveGlobalFormFull();
+    }
+    if (ownerType && ownerId) {
+      return await this.findActivePartnerFormFull(ownerId);
+    }
+    return await this.findActiveGlobalFormFull();
+  }
+
+  // --- Scoped queries ---
+
+  async findActiveGlobalForm(): Promise<Form | null> {
     return await this.model
-      .findOne({ active: true, deleted: false, ownerType, ownerId })
+      .findOne({ ownerType: OwnerType.GLOBAL, active: true, deleted: false })
+      .exec();
+  }
+
+  async findActiveGlobalFormFull(): Promise<Form | null> {
+    return await this.model
+      .findOne({ ownerType: OwnerType.GLOBAL, active: true, deleted: false })
       .populate({
         path: 'sections',
         match: { active: true, deleted: false },
@@ -42,41 +63,52 @@ export class FormRepository extends createRepository(Form) {
       .exec();
   }
 
-  async findByOwner(where: object, ownerContext: OwnerContext): Promise<Form | null> {
+  async findActivePartnerForm(ownerId: string): Promise<Form | null> {
     return await this.model
       .findOne({
-        ...where,
+        ownerType: OwnerType.PARTNER,
+        ownerId,
+        active: true,
         deleted: false,
-        ownerType: ownerContext.ownerType,
-        ownerId: ownerContext.ownerId,
-      })
-      .populate('sections')
-      .populate({
-        path: 'sections',
-        populate: ['questions'],
       })
       .exec();
   }
 
-  async validateSectionOwnership(
-    sectionId: string,
-    ownerContext: OwnerContext,
-  ): Promise<Section> {
-    const form = await this.findActiveForm(ownerContext.ownerType, ownerContext.ownerId);
-    if (!form) {
-      throw new ForbiddenException('No active form found for this owner');
-    }
-    const sectionIds = form.sections.map((s: any) => s.toString());
-    if (!sectionIds.includes(sectionId)) {
-      throw new ForbiddenException('Section does not belong to this owner');
-    }
-    const formFull = await this.findBy({ _id: form._id });
-    const section = formFull?.sections.find(
-      (s: any) => s._id.toString() === sectionId,
-    );
-    if (!section) {
-      throw new ForbiddenException('Section not found in owner form');
-    }
-    return section as Section;
+  async findActivePartnerFormFull(ownerId: string): Promise<Form | null> {
+    return await this.model
+      .findOne({
+        ownerType: OwnerType.PARTNER,
+        ownerId,
+        active: true,
+        deleted: false,
+      })
+      .populate({
+        path: 'sections',
+        match: { active: true, deleted: false },
+        populate: {
+          path: 'questions',
+          match: { active: true, deleted: false },
+        },
+      })
+      .lean()
+      .exec();
+  }
+
+  async findFormBySectionId(sectionId: string): Promise<Form | null> {
+    return await this.model
+      .findOne({
+        sections: new Types.ObjectId(sectionId),
+        deleted: false,
+      })
+      .exec();
+  }
+
+  async findByOwner(
+    ownerType: OwnerType,
+    ownerId?: string,
+  ): Promise<Form[]> {
+    const filter: Record<string, unknown> = { ownerType, deleted: false };
+    if (ownerId) filter.ownerId = ownerId;
+    return await this.model.find(filter).exec();
   }
 }

@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { Types } from 'mongoose';
 import { createRepository } from 'src/common/base/base.repository';
 import { Section } from './section.schema';
 import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
-import { GetAllWhereInput } from 'src/common/base/interfaces/get-all.input';
+import { GetAllInput, GetAllWhereInput } from 'src/common/base/interfaces/get-all.input';
 
 @Injectable()
 export class SectionRepository extends createRepository(Section) {
@@ -25,5 +26,21 @@ export class SectionRepository extends createRepository(Section) {
       limit,
       totalItems,
     };
+  }
+
+  async findByIds(
+    ids: string[],
+    { page, limit }: GetAllInput,
+  ): Promise<GetAllOutput<Section>> {
+    const objectIds = ids.map((id) => new Types.ObjectId(id));
+    const filter = { _id: { $in: objectIds }, deleted: false };
+    const data = await this.model
+      .find(filter)
+      .skip((page - 1) * limit)
+      .limit(limit ?? Infinity)
+      .populate('questions')
+      .exec();
+    const totalItems = await this.model.countDocuments(filter);
+    return { data, page, limit, totalItems };
   }
 }

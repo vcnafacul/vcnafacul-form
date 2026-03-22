@@ -1,8 +1,8 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { GetAllInput } from 'src/common/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
-import { OwnerContext } from 'src/common/interfaces/owner-context.interface';
 import { QuestionRepository } from '../question/question.repository';
+import { OwnerType } from '../form/enum/owner-type.enum';
 import { CreateSectionDtoInput } from './dto/create-section.dto.input';
 import { SectionRepository } from './section.repository';
 import { Section } from './section.schema';
@@ -19,20 +19,19 @@ export class SectionSevice {
     private readonly formRepository: FormRepository,
   ) {}
 
-  async create(dto: CreateSectionDtoInput, ownerContext: OwnerContext): Promise<Section> {
+  async create(dto: CreateSectionDtoInput, formId?: string): Promise<Section> {
     try {
-      const form = await this.formRepository.findActiveForm(
-        ownerContext.ownerType,
-        ownerContext.ownerId,
-      );
-      if (!form) {
-        throw new HttpException(
-          'Nenhum formulário ativo encontrado para este proprietário',
-          HttpStatus.NOT_FOUND,
-        );
+      // Se formId foi passado, usa ele; senão fallback para form ativo (transição)
+      const form = formId
+        ? await this.formRepository.findById(formId)
+        : await this.formRepository.findActiveForm('GLOBAL', null);
+
+      if (!form || form.deleted) {
+        throw new HttpException('Form not found', HttpStatus.NOT_FOUND);
       }
       const section = new Section();
       section.name = dto.name;
+      section.description = dto.description ?? '';
 
       const session = await this.repository.startSession();
       session.startTransaction();
@@ -54,23 +53,31 @@ export class SectionSevice {
     return await this.repository.findById(id);
   }
 
-  async find(data: GetAllInput, ownerContext: OwnerContext): Promise<GetAllOutput<Section>> {
-    const form = await this.formRepository.findActiveForm(
-      ownerContext.ownerType,
-      ownerContext.ownerId,
-    );
-    if (!form) {
-      return { data: [], page: 1, limit: 10, totalItems: 0 };
-    }
-    const sectionIds = form.sections.map((s: any) => s.toString());
-    return await this.repository.find({
-      ...data,
-      where: { _id: { $in: sectionIds } },
-    });
+  async find(data: GetAllInput): Promise<GetAllOutput<Section>> {
+    return await this.repository.find(data);
   }
 
-  async setActive(sectionId: string, ownerContext: OwnerContext) {
-    await this.formRepository.validateSectionOwnership(sectionId, ownerContext);
+  async findByOwner(
+    ownerType: OwnerType,
+    ownerId: string | undefined,
+    data: GetAllInput,
+  ): Promise<GetAllOutput<Section>> {
+    const form =
+      ownerType === OwnerType.GLOBAL
+        ? await this.formRepository.findActiveGlobalForm()
+        : await this.formRepository.findActivePartnerForm(ownerId!);
+
+    if (!form) {
+      // Nenhum form existe para esse owner — retorna lista vazia
+      return { data: [], page: data.page, limit: data.limit, totalItems: 0 };
+    }
+
+    // Busca apenas as seções que pertencem a esse form
+    const sectionIds = form.sections.map((s) => s.toString());
+    return await this.repository.findByIds(sectionIds, data);
+  }
+
+  async setActive(sectionId: string) {
     const section = await this.repository.findById(sectionId);
     if (!section) {
       throw new HttpException('section id not exist', HttpStatus.NOT_FOUND);
@@ -79,8 +86,7 @@ export class SectionSevice {
     await this.repository.updateOne(section);
   }
 
-  async delete(id: string, ownerContext: OwnerContext): Promise<void> {
-    await this.formRepository.validateSectionOwnership(id, ownerContext);
+  async delete(id: string): Promise<void> {
     const section = await this.repository.findById(id);
     if (!section) {
       throw new HttpException('Seção não encontrada', HttpStatus.NOT_FOUND);
@@ -98,22 +104,22 @@ export class SectionSevice {
     }
   }
 
-  async update(id: string, dto: UpdateSectionDtoInput, ownerContext: OwnerContext): Promise<void> {
-    await this.formRepository.validateSectionOwnership(id, ownerContext);
+  async update(id: string, dto: UpdateSectionDtoInput): Promise<void> {
     const section = await this.repository.findById(id);
     if (!section) {
       throw new HttpException('Seção não encontrada', HttpStatus.NOT_FOUND);
     }
     section.name = dto.name;
+    if (dto.description !== undefined) {
+      section.description = dto.description;
+    }
     await this.repository.updateOne(section);
   }
 
   async reorderQuestions(
     sectionId: string,
     dto: ReorderQuestionsDtoInput,
-    ownerContext: OwnerContext,
   ): Promise<void> {
-    await this.formRepository.validateSectionOwnership(sectionId, ownerContext);
     const section = await this.repository.findById(sectionId);
     if (!section) {
       throw new HttpException('Seção não encontrada', HttpStatus.NOT_FOUND);
@@ -154,19 +160,15 @@ export class SectionSevice {
     }
   }
 
-  async duplicate(sectionId: string, ownerContext: OwnerContext): Promise<void> {
+  async duplicate(sectionId: string): Promise<void> {
     try {
-      await this.formRepository.validateSectionOwnership(sectionId, ownerContext);
-
       const originalSection = await this.repository.findById(sectionId);
       if (!originalSection) {
         throw new HttpException('Seção não encontrada', HttpStatus.NOT_FOUND);
       }
 
-      const form = await this.formRepository.findActiveForm(
-        ownerContext.ownerType,
-        ownerContext.ownerId,
-      );
+      // Busca o formulário dono da seção
+      const form = await this.formRepository.findFormBySectionId(sectionId);
       if (!form) {
         throw new HttpException('Formulário não encontrado', HttpStatus.NOT_FOUND);
       }
@@ -205,13 +207,5 @@ export class SectionSevice {
         HttpStatus.BAD_REQUEST,
       );
     }
-  }
-
-  async findGlobalActiveSections(): Promise<Section[]> {
-    const form = await this.formRepository.findActiveFormFull('GLOBAL', null);
-    if (!form) {
-      return [];
-    }
-    return form.sections as Section[];
   }
 }

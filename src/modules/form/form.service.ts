@@ -1,20 +1,14 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { GetAllInput } from 'src/common/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
-import { OwnerContext } from 'src/common/interfaces/owner-context.interface';
+import { OwnershipContext } from 'src/common/guards/ownership-context.helper';
 import { SectionRepository } from '../section/section.repository';
 import { CreateFormDtoInput } from './dto/create-form.dto.input';
 import { FormRepository } from './form.repository';
 import { Form } from './form.schema';
 import { formFullMapper } from '../form-full/utils/form-full.mapper';
 import { FormFullRepository } from '../form-full/form-full.repository';
-
-export interface HasActiveFormResponse {
-  canCreate: boolean;
-  globalFormReady: boolean;
-  partnerFormReady: boolean;
-  message?: string;
-}
+import { OwnerType } from './enum/owner-type.enum';
 
 @Injectable()
 export class FormSevice {
@@ -24,11 +18,29 @@ export class FormSevice {
     private readonly formFullRepository: FormFullRepository,
   ) {}
 
-  async create(dto: CreateFormDtoInput, ownerContext: OwnerContext): Promise<Form> {
+  async create(dto: CreateFormDtoInput): Promise<Form> {
+    if (dto.ownerType === OwnerType.GLOBAL) {
+      const existing = await this.repository.findOne({
+        ownerType: OwnerType.GLOBAL,
+        deleted: false,
+      });
+      if (existing) {
+        throw new HttpException(
+          'Global Form already exists',
+          HttpStatus.CONFLICT,
+        );
+      }
+    }
+
     const form = new Form();
     form.name = dto.name;
-    form.ownerType = ownerContext.ownerType;
-    form.ownerId = ownerContext.ownerId;
+    form.ownerType = dto.ownerType;
+    form.ownerId = dto.ownerId ?? null;
+    // Partner forms são auto-ativados (1 form por partner)
+    if (dto.ownerType === OwnerType.PARTNER) {
+      form.active = true;
+    }
+
     return await this.repository.create(form);
   }
 
@@ -36,106 +48,91 @@ export class FormSevice {
     return await this.repository.findBy({ _id: id });
   }
 
-  async find(data: GetAllInput, ownerContext: OwnerContext): Promise<GetAllOutput<Form>> {
+  async find(data: GetAllInput, ctx: OwnershipContext): Promise<GetAllOutput<Form>> {
     return await this.repository.find({
       ...data,
       where: {
         ...(data as any).where,
-        ownerType: ownerContext.ownerType,
-        ownerId: ownerContext.ownerId,
+        ownerType: ctx.ownerType,
+        ownerId: ctx.ownerId,
       },
     });
   }
 
-  async setActive(formId: string, ownerContext: OwnerContext) {
+  async setActive(formId: string) {
     const form = await this.repository.findBy({ _id: formId });
     if (!form) {
       throw new HttpException('form id not exist', HttpStatus.NOT_FOUND);
     }
-    if (form.ownerType !== ownerContext.ownerType || form.ownerId !== ownerContext.ownerId) {
-      throw new HttpException('form does not belong to this owner', HttpStatus.FORBIDDEN);
+
+    if (form.ownerType === OwnerType.GLOBAL) {
+      const oldForm = await this.repository.findActiveGlobalForm();
+      if (oldForm && oldForm._id.toString() !== form._id.toString()) {
+        oldForm.active = false;
+        await this.repository.updateOne(oldForm);
+      }
+    } else {
+      const oldForm = await this.repository.findActivePartnerForm(
+        form.ownerId!,
+      );
+      if (oldForm && oldForm._id.toString() !== form._id.toString()) {
+        oldForm.active = false;
+        await this.repository.updateOne(oldForm);
+      }
     }
-    const oldForm = await this.repository.findByOwner({ active: true }, ownerContext);
-    if (oldForm) {
-      oldForm.active = false;
-      await this.repository.updateOne(oldForm);
-    }
+
     form.active = true;
     await this.repository.updateOne(form);
   }
 
-  async hasActiveForm(ownerContext: OwnerContext): Promise<HasActiveFormResponse> {
-    const globalForm = await this.repository.findActiveFormFull('GLOBAL', null);
-    const globalFormReady = !!(
-      globalForm &&
-      !globalForm.deleted &&
-      globalForm.sections.length > 0
-    );
+  async hasActiveForm(partnerId?: string): Promise<boolean> {
+    const globalForm = await this.repository.findActiveGlobalFormFull();
+    const globalHasContent =
+      globalForm && !globalForm.deleted && globalForm.sections.length > 0;
 
-    let partnerFormReady = false;
-    if (ownerContext.ownerType === 'PARTNER') {
-      const partnerForm = await this.repository.findActiveFormFull(
-        'PARTNER',
-        ownerContext.ownerId,
-      );
-      partnerFormReady = !!(
-        partnerForm &&
-        !partnerForm.deleted &&
-        partnerForm.sections.length > 0
+    let partnerHasContent = false;
+    if (partnerId) {
+      const partnerForm =
+        await this.repository.findActivePartnerFormFull(partnerId);
+      partnerHasContent =
+        !!partnerForm && !partnerForm.deleted && partnerForm.sections.length > 0;
+    }
+
+    if (!globalHasContent && !partnerHasContent) {
+      throw new HttpException(
+        'Nenhum formulário ativo com seções e questões foi encontrado',
+        HttpStatus.NOT_FOUND,
       );
     }
 
-    const canCreate = globalFormReady || partnerFormReady;
-
-    let message: string | undefined;
-    if (!canCreate) {
-      if (!globalForm && !partnerFormReady) {
-        message = 'Nenhum formulário foi configurado. Entre em contato com o administrador.';
-      } else {
-        message =
-          'Nenhum formulário possui seções ativas. Configure seu formulário ou entre em contato com o administrador.';
-      }
-    }
-
-    return { canCreate, globalFormReady, partnerFormReady, message };
+    return true;
   }
 
-  async createFormFull(inscriptionId: string, ownerContext: OwnerContext): Promise<string> {
-    const globalForm = await this.repository.findActiveFormFull('GLOBAL', null);
-    let partnerForm: Form | null = null;
-
-    if (ownerContext.ownerType === 'PARTNER') {
-      partnerForm = await this.repository.findActiveFormFull(
-        'PARTNER',
-        ownerContext.ownerId,
-      );
-    }
-
-    if (!globalForm && !partnerForm) {
+  async createFormFull(
+    inscriptionId: string,
+    partnerId: string,
+  ): Promise<string> {
+    const globalForm = await this.repository.findActiveGlobalFormFull();
+    if (!globalForm || globalForm.deleted) {
       throw new HttpException(
-        'Nenhum formulário ativo encontrado',
+        'No active global form configured',
         HttpStatus.NOT_FOUND,
       );
     }
 
-    const hasGlobalSections =
-      globalForm && !globalForm.deleted && globalForm.sections.length > 0;
-    const hasPartnerSections =
-      partnerForm && !partnerForm.deleted && partnerForm.sections.length > 0;
+    const partnerForm =
+      await this.repository.findActivePartnerFormFull(partnerId);
 
-    if (!hasGlobalSections && !hasPartnerSections) {
+    const formFull = formFullMapper(globalForm, partnerForm, inscriptionId);
+
+    if (formFull.sections.length === 0) {
       throw new HttpException(
-        'Nenhum formulário possui seções ativas',
-        HttpStatus.NOT_FOUND,
+        'Nenhuma seção ativa com questões foi encontrada nos formulários',
+        HttpStatus.BAD_REQUEST,
       );
     }
 
-    const formFull = formFullMapper(
-      hasGlobalSections ? globalForm : null,
-      hasPartnerSections ? partnerForm : null,
-      inscriptionId,
-    );
-    const formFullCreated = await this.formFullRepository.create(formFull);
-    return formFullCreated._id.toString();
+    const created = await this.formFullRepository.create(formFull);
+    return created._id.toString();
   }
 }
