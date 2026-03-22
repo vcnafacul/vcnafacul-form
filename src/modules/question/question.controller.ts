@@ -99,8 +99,8 @@ export class QuestionController {
   @ApiResponse({
     description: 'buscar todas perguntas paginadas',
   })
-  async find(@Query() qyery: GetAllQuestionDtoInput): Promise<GetAllDtoOutput<Question>> {
-    return await this.service.find(qyery);
+  async find(@Query() query: GetAllQuestionDtoInput): Promise<GetAllDtoOutput<Question>> {
+    return await this.service.find(query);
   }
 
   @Put(':id')

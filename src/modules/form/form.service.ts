@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { GetAllInput } from 'src/common/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
+import { OwnershipContext } from 'src/common/guards/ownership-context.helper';
 import { SectionRepository } from '../section/section.repository';
 import { CreateFormDtoInput } from './dto/create-form.dto.input';
 import { FormRepository } from './form.repository';
@@ -47,8 +48,15 @@ export class FormSevice {
     return await this.repository.findBy({ _id: id });
   }
 
-  async find(data: GetAllInput): Promise<GetAllOutput<Form>> {
-    return await this.repository.find(data);
+  async find(data: GetAllInput, ctx: OwnershipContext): Promise<GetAllOutput<Form>> {
+    return await this.repository.find({
+      ...data,
+      where: {
+        ...(data as any).where,
+        ownerType: ctx.ownerType,
+        ownerId: ctx.ownerId,
+      },
+    });
   }
 
   async setActive(formId: string) {
@@ -96,6 +104,7 @@ export class FormSevice {
         HttpStatus.NOT_FOUND,
       );
     }
+
     return true;
   }
 

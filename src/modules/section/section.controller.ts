@@ -13,10 +13,10 @@ import { OwnerType } from '../form/enum/owner-type.enum';
 import { FormRepository } from '../form/form.repository';
 import { EnvService } from 'src/common/modules/env/env.service';
 import { CreateSectionDtoInput } from './dto/create-section.dto.input';
+import { ReorderQuestionsDtoInput } from './dto/reorder-questions.dto.input';
+import { UpdateSectionDtoInput } from './dto/update-section.dto.input';
 import { Section } from './section.schema';
 import { SectionSevice } from './section.service';
-import { UpdateSectionDtoInput } from './dto/update-section.dto.input';
-import { ReorderQuestionsDtoInput } from './dto/reorder-questions.dto.input';
 import { FormSevice } from '../form/form.service';
 
 @ApiTags('Seção')
@@ -89,10 +89,6 @@ export class SectionController {
   }
 
   @Get(':id')
-  @ApiProperty({
-    description: 'buscar seção por id',
-    type: Section,
-  })
   async findById(@Param('id') id: string): Promise<Section | null> {
     return await this.service.findById(id);
   }

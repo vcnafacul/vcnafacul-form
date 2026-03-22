@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import questionSchema, { Question } from '../question/question.schema';
 import { SectionModule } from '../section/section.module';
+import { FormModule } from '../form/form.module';
 import sectionSchema, { Section } from '../section/section.schema';
 import formSchema, { Form } from '../form/form.schema';
 import { QuestionController } from './question.controller';
@@ -18,6 +19,7 @@ import { EnvModule } from 'src/common/modules/env/env.module';
       { name: Form.name, schema: formSchema },
     ]),
     SectionModule,
+    FormModule,
     EnvModule,
   ],
   providers: [QuestionSevice, QuestionRepository, FormRepository],

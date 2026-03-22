@@ -21,14 +21,22 @@ export class FormRepository extends createRepository(Form) {
     return await this.model.findOne({}).populate('sections').exec();
   }
 
-  async findActiveForm(): Promise<Form | null> {
-    return await this.model.findOne({ active: true, deleted: false }).exec();
+  async findActiveForm(ownerType: string, ownerId: string | null): Promise<Form | null> {
+    return await this.model
+      .findOne({ active: true, deleted: false, ownerType, ownerId })
+      .exec();
   }
 
   /**
    * @deprecated Use findActiveGlobalFormFull() or findActivePartnerFormFull() instead
    */
-  async findActiveFormFull(): Promise<Form | null> {
+  async findActiveFormFull(ownerType?: string, ownerId?: string | null): Promise<Form | null> {
+    if (ownerType && ownerType === OwnerType.GLOBAL) {
+      return await this.findActiveGlobalFormFull();
+    }
+    if (ownerType && ownerId) {
+      return await this.findActivePartnerFormFull(ownerId);
+    }
     return await this.findActiveGlobalFormFull();
   }
 

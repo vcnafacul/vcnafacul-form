@@ -46,11 +46,12 @@ export class FormController {
   }
 
   @Get()
-  @ApiResponse({
-    description: 'buscar todos formularios paginados',
-  })
-  async find(@Query() qyery: GetAllFormDtoInput): Promise<GetAllDtoOutput<Form>> {
-    return await this.service.find(qyery);
+  async find(
+    @Headers() headers: Record<string, string | undefined>,
+    @Query() query: GetAllFormDtoInput,
+  ): Promise<GetAllDtoOutput<Form>> {
+    const ctx = this.extractOwnership(headers);
+    return await this.service.find(query, ctx);
   }
 
   @Patch(':id/set-active')
@@ -91,10 +92,6 @@ export class FormController {
   }
 
   @Get(':id')
-  @ApiResponse({
-    description: 'buscar formulario por id',
-    type: Form,
-  })
   async findById(@Param('id') id: string): Promise<Form | null> {
     return await this.service.findById(id);
   }
