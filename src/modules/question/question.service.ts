@@ -2,7 +2,6 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { GetAllInput } from 'src/common/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
-import { OwnerContext } from 'src/common/interfaces/owner-context.interface';
 import { CreateQuestionDtoInput } from './dto/create-question.dto.input';
 import { UpdateQuestionDtoInput } from './dto/update-question.dto.input';
 import { ComplexConditionDtoInput } from './dto/complex-condition.dto.input';
@@ -10,33 +9,19 @@ import { AnswerType } from './enum/answer-type';
 import { QuestionRepository } from './question.repository';
 import { Question } from './question.schema';
 import { SectionRepository } from '../section/section.repository';
-import { FormRepository } from '../form/form.repository';
 
 @Injectable()
 export class QuestionSevice {
   constructor(
     private readonly repository: QuestionRepository,
     private readonly sectionRepository: SectionRepository,
-    private readonly formRepository: FormRepository,
   ) {}
 
-  private async findSectionIdForQuestion(questionId: string): Promise<string> {
-    const section = await this.sectionRepository.model
-      .findOne({ questions: questionId, deleted: false })
-      .exec();
-    if (!section) {
-      throw new HttpException('Seção da questão não encontrada', HttpStatus.NOT_FOUND);
-    }
-    return section._id.toString();
-  }
-
-  async create(dto: CreateQuestionDtoInput, ownerContext: OwnerContext): Promise<Question> {
+  async create(dto: CreateQuestionDtoInput): Promise<Question> {
     const section = await this.sectionRepository.findById(dto.sectionId);
     if (!section) {
       throw new HttpException('section não existe', HttpStatus.NOT_FOUND);
     }
-
-    await this.formRepository.validateSectionOwnership(dto.sectionId, ownerContext);
 
     if (dto.conditions) {
       await this.validateConditions(dto.conditions);
@@ -71,14 +56,11 @@ export class QuestionSevice {
     return await this.repository.find(data);
   }
 
-  async update(id: string, dto: UpdateQuestionDtoInput, ownerContext: OwnerContext): Promise<Question> {
+  async update(id: string, dto: UpdateQuestionDtoInput): Promise<Question> {
     const existingQuestion = await this.repository.findById(id);
     if (!existingQuestion) {
       throw new HttpException('Questão não encontrada', HttpStatus.NOT_FOUND);
     }
-
-    const sectionId = await this.findSectionIdForQuestion(id);
-    await this.formRepository.validateSectionOwnership(sectionId, ownerContext);
 
     if (dto.conditions) {
       await this.validateConditions(dto.conditions);
@@ -104,27 +86,21 @@ export class QuestionSevice {
     }
   }
 
-  async setActive(questionId: string, ownerContext: OwnerContext) {
+  async setActive(questionId: string) {
     const question = await this.repository.findById(questionId);
     if (!question) {
       throw new HttpException('question id not exist', HttpStatus.NOT_FOUND);
     }
 
-    const sectionId = await this.findSectionIdForQuestion(questionId);
-    await this.formRepository.validateSectionOwnership(sectionId, ownerContext);
-
     question.active = !question.active;
     await this.repository.updateOne(question);
   }
 
-  async delete(id: string, ownerContext: OwnerContext): Promise<void> {
+  async delete(id: string): Promise<void> {
     const question = await this.repository.findById(id);
     if (!question) {
       throw new HttpException('Questão não encontrada', HttpStatus.NOT_FOUND);
     }
-
-    const sectionId = await this.findSectionIdForQuestion(id);
-    await this.formRepository.validateSectionOwnership(sectionId, ownerContext);
 
     try {
       const session = await this.repository.startSession();
