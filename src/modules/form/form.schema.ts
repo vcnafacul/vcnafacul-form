@@ -11,7 +11,7 @@ export class Form extends BaseSchema {
   @Prop({ required: true, enum: ['GLOBAL', 'PARTNER'] })
   ownerType: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   ownerId: string | null;
 
   @Prop({

@@ -11,7 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import { Env } from '../modules/env/env';
 import { OwnerContext } from '../interfaces/owner-context.interface';
 
-const EXEMPT_ROUTES = ['/v1/section/global-active'];
+const EXEMPT_PREFIXES = ['/v1/section/global-active', '/v1/form-full', '/v1/submission', '/v1/rules-set'];
 
 @Injectable()
 export class OwnerContextInterceptor implements NestInterceptor {
@@ -20,7 +20,7 @@ export class OwnerContextInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const req = context.switchToHttp().getRequest();
 
-    if (EXEMPT_ROUTES.includes(req.path)) {
+    if (EXEMPT_PREFIXES.some((prefix) => req.path.startsWith(prefix))) {
       return next.handle();
     }
 
