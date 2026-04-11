@@ -45,7 +45,19 @@ export class SectionSevice {
 
       return sectionCreated;
     } catch (error) {
-      throw new HttpException(`Erro ao criar a seção: ${error}`, HttpStatus.BAD_REQUEST);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      if (error?.code === 11000) {
+        throw new HttpException(
+          'Já existe uma seção com esse nome',
+          HttpStatus.CONFLICT,
+        );
+      }
+      throw new HttpException(
+        `Erro ao criar a seção: ${error?.message ?? error}`,
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 
