@@ -23,7 +23,6 @@ export class QuestionSevice {
       throw new HttpException('section não existe', HttpStatus.NOT_FOUND);
     }
 
-    // Valida condições se fornecidas
     if (dto.conditions) {
       await this.validateConditions(dto.conditions);
     }
@@ -35,10 +34,8 @@ export class QuestionSevice {
       const session = await this.repository.startSession();
       session.startTransaction();
 
-      // Primeiro cria a questão no banco para gerar o _id
       question = await this.repository.create(entity, { session });
 
-      // Depois adiciona a questão (com _id) ao array da seção
       section.questions.push(question);
       await this.sectionRepository.updateOne(section, { session });
 
@@ -47,7 +44,6 @@ export class QuestionSevice {
 
       return question;
     } catch {
-      // Você pode mapear aqui erros conhecidos (11000 etc.) para 409/400 se quiser
       throw new HttpException('Erro ao criar a questão', HttpStatus.BAD_REQUEST);
     }
   }
@@ -61,19 +57,15 @@ export class QuestionSevice {
   }
 
   async update(id: string, dto: UpdateQuestionDtoInput): Promise<Question> {
-    // Verifica se a questão existe
     const existingQuestion = await this.repository.findById(id);
     if (!existingQuestion) {
       throw new HttpException('Questão não encontrada', HttpStatus.NOT_FOUND);
     }
 
-    // Valida condições se fornecidas
     if (dto.conditions) {
       await this.validateConditions(dto.conditions);
     }
 
-    // Aplica as validações do schema antes de atualizar
-    // Se answerType está sendo alterado para Options, options deve ser fornecido
     if (dto.answerType === AnswerType.Options && (!dto.options || dto.options.length === 0)) {
       throw new HttpException(
         'Options é obrigatório quando AnswerType for Options',
@@ -81,7 +73,6 @@ export class QuestionSevice {
       );
     }
 
-    // Se answerType está sendo alterado para algo diferente de Options, limpa options
     if (dto.answerType && dto.answerType !== AnswerType.Options) {
       dto.options = [];
     }
@@ -100,12 +91,12 @@ export class QuestionSevice {
     if (!question) {
       throw new HttpException('question id not exist', HttpStatus.NOT_FOUND);
     }
+
     question.active = !question.active;
     await this.repository.updateOne(question);
   }
 
   async delete(id: string): Promise<void> {
-    // Verifica se a questão existe
     const question = await this.repository.findById(id);
     if (!question) {
       throw new HttpException('Questão não encontrada', HttpStatus.NOT_FOUND);
@@ -115,16 +106,12 @@ export class QuestionSevice {
       const session = await this.repository.startSession();
       session.startTransaction();
 
-      // Remove a questão (soft delete)
       await this.repository.delete(id);
 
-      // Remove a referência da questão na section
-      // Busca todas as sections que contêm esta questão
       const sections = await this.sectionRepository.model.find({
         questions: question._id,
       });
 
-      // Remove a referência da questão em cada section
       for (const section of sections) {
         section.questions = section.questions.filter(
           (q) => q._id?.toString() !== question._id.toString(),
@@ -139,9 +126,6 @@ export class QuestionSevice {
     }
   }
 
-  /**
-   * Valida as condições fornecidas verificando se as questões referenciadas existem
-   */
   private async validateConditions(conditions: ComplexConditionDtoInput): Promise<void> {
     if (!conditions.conditions || conditions.conditions.length === 0) {
       throw new HttpException(
@@ -150,9 +134,8 @@ export class QuestionSevice {
       );
     }
 
-    // Verifica se todas as questões referenciadas nas condições existem
     const questionIds = conditions.conditions.map((c) => c.questionId);
-    const uniqueQuestionIds = [...new Set(questionIds)]; // Remove duplicatas
+    const uniqueQuestionIds = [...new Set(questionIds)];
 
     const existingQuestions = await this.repository.model.find({
       _id: { $in: uniqueQuestionIds },

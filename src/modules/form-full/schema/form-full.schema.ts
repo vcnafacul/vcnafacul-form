@@ -11,6 +11,12 @@ export class FormFull extends BaseSchema {
   @Prop({ required: true })
   inscriptionId: string;
 
+  @Prop({ type: String, default: null })
+  globalFormId: string | null;
+
+  @Prop({ type: String, default: null })
+  partnerFormId: string | null;
+
   @Prop({ type: [SectionBase], default: [] })
   sections: SectionBase[];
 }
