@@ -1,42 +1,56 @@
-# 📚 Você na Facul — Backend
+# 📝 Você na Facul — vcnafacul-form
 
-**Você na Facul** é uma plataforma sem fins lucrativos que visa democratizar o acesso à universidade.  
-Além de oferecer uma experiência para estudantes, também fornece ferramentas para **cursinhos parceiros** gerenciarem seu processo seletivo, turmas, frequência, solicitações de documentos e outras funcionalidades.
+Microsserviço de **construtor de formulários** da plataforma **Você na Facul**.
+
+Permite criar formulários hierárquicos (`Form → Section → Question`), aplicar regras de pontuação/desempate configuráveis e rankear respondentes. É usado principalmente em processos seletivos de cursinhos parceiros. **Não é exposto ao público**: só recebe chamadas do gateway `api-vcnafacul`.
 
 ---
 
-## 🚀 Funcionalidades Principais
+## 🧩 Arquitetura
 
-- **Gestão de Formulários**
-  - Estrutura hierárquica: `Form` → `Section` → `Question`
-  - Suporte a diferentes tipos de questões e opções de resposta
-  - `helpText` para instruções adicionais
+```
+client-vcnafacul  →  api-vcnafacul  →  ms-simulado       (motor de provas)
+  (React SPA)       (NestJS gateway)   (NestJS + MongoDB)
+                         ↓
+                    vcnafacul-form    ← você está aqui
+                    (NestJS + MongoDB)
+```
 
-- **Sistema de Regras**
-  - `RuleSet` vinculado a um formulário
-  - Regras de **pontuação** (`Score`) e **desempate** (`TieBreaker`)
-  - Estratégia **PerOption**: define pontuação por opção escolhida
-  - Validação automática de estrutura via `ConfigSchemaValidationPipe`
-  - Validação no serviço para garantir que opções existam na questão
+| Serviço | Stack | Banco | Porta |
+|---------|-------|-------|-------|
+| api-vcnafacul | NestJS 10 + TypeORM | MySQL 8+ | `3333` |
+| ms-simulado | NestJS 10 + Mongoose | MongoDB | `3000` |
+| **vcnafacul-form** (este) | NestJS 11 + Mongoose | MongoDB | `3001` |
+| client-vcnafacul | React 19 + Vite 6 | — | `5173` |
 
-- **Ranking de Estudantes**
-  - Recebe lista de usuários
-  - Calcula pontuação com base no `RuleSet` e respostas
-  - Retorna ranking ordenado por pontuação (e critérios de desempate)
+---
+
+## 🚀 Funcionalidades principais
+
+- **Gestão de formulários** — hierarquia `Form → Section → Question`, tipos variados de questão, `helpText`
+- **Sistema de regras** (`RuleSet`) — pontuação (`Score`) e desempate (`TieBreaker`) por estratégia plugável:
+  - `PerOption` — pontuação fixa por opção escolhida
+  - `InverseProportional` — proporcional ao inverso do valor numérico
+  - `ComputedInverseProportional` — combina múltiplas perguntas via expressão matemática
+- **Validação dupla** — `ConfigSchemaValidationPipe` (AJV + Zod) no schema das regras + checks de domínio no service
+- **Ranking** — recebe lista de usuários, calcula pontuação, retorna ordenado com desempates
 
 ---
 
 ## 🛠 Tecnologias
 
-- **Node.js** + **NestJS**
-- **MongoDB** + **Mongoose**
-- **Swagger** para documentação e testes de API
-- **Class-Validator** e **Class-Transformer** para validação e transformação
-- **Docker** (opcional, para desenvolvimento e homologação)
+- **NestJS 11** (TypeScript)
+- **MongoDB** + **Mongoose** (replica set recomendado para transações)
+- **Zod** + **AJV** (validação de schema de regras)
+- **class-validator** / **class-transformer** (DTOs)
+- **mongodb-memory-server** (testes — DB em memória automático quando `NODE_ENV=test`)
+- **Swagger** em `/api`
+- **MongoExceptionFilter** para erros do driver
+- **Jest** (unit + e2e)
 
 ---
 
-## 📂 Estrutura de Entidades
+## 📂 Modelo de entidades
 
 ```mermaid
 erDiagram
@@ -48,38 +62,45 @@ erDiagram
 
 - **Form** → contém `sections` e um `ruleSet`
 - **Section** → contém `questions`
-- **Question** → contém enunciado, opções e metadados
+- **Question** → enunciado, opções, metadados
 - **RuleSet** → agrupa `scoringRules` e `tieBreakerRules`
-- **Rule** → define estratégia e configuração de pontuação
+- **Rule** → estratégia + configuração
 
 ---
 
-## ⚙️ Como Rodar
-
-### Pré-requisitos
+## ⚙️ Pré-requisitos
 
 - Node.js 20+
-- MongoDB 6+
-- (Opcional) Docker + Docker Compose
+- Yarn
+- MongoDB 6+ (replica set para transações — ver `docker-mongodb-replica.sh`)
 
-### Instalação
+---
+
+## 🚀 Setup
 
 ```bash
 # Instalar dependências
-npm install
+yarn
 
-# Rodar em desenvolvimento
-npm run start:dev
+# Copiar .env e preencher
+cp .env.example .env
+# MONGODB, PORT, NODE_ENV
+
+# Subir replica set local (uma vez)
+./docker-mongodb-replica.sh
+
+# Rodar em watch (porta 3001)
+yarn dev
 ```
 
 ---
 
 ## 📑 Documentação da API
 
-A documentação interativa (Swagger) estará disponível em:
+Swagger disponível em:
 
 ```
-http://localhost:3000/api
+http://localhost:3001/api
 ```
 
 ---
@@ -87,18 +108,25 @@ http://localhost:3000/api
 ## 🧪 Testes
 
 ```bash
-# Testes unitários
-npm run test
+# Unit (usa mongodb-memory-server automaticamente)
+yarn test
 
-# Testes e2e
-npm run test:e2e
+# e2e
+yarn test:e2e
+
+# Auditoria de dependências customizada
+yarn check:deps
 ```
 
 ---
 
-## 📌 Próximos Passos
+## 🔀 CI/CD
 
-- Implementar autenticação/autorização para endpoints sensíveis
-- Melhorar regras de desempate no ranking
-- Adicionar cache para cálculos de ranking
-- Criar exportação de resultados em CSV/PDF
+- `ci-homol.yml` — deploy em homologação ao mergear PR em `develop`
+- `ci-prod.yml` — deploy em produção ao publicar tag `v*`
+
+---
+
+## 📄 Licença
+
+MIT.
