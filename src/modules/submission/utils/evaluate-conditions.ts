@@ -41,28 +41,43 @@ function evaluateConditions(conditions: ComplexCondition, answers: AnswerDto[]):
 function evaluateBaseCondition(condition: BaseCondition, answers: AnswerDto[]): boolean {
   const answer = answers.find((a) => a.questionId === condition.questionId);
 
-  // Se não encontrou a resposta, a condição não é atendida
-  if (!answer) {
+  // Sem resposta (ou resposta vazia), a condição não é atendida
+  if (!answer || semResposta(answer.answer)) {
     return false;
   }
 
   return evaluateOperator(condition.operator, answer.answer, condition.expectedValue);
 }
 
+function semResposta(valor: unknown): boolean {
+  return (
+    valor === undefined ||
+    valor === null ||
+    valor === '' ||
+    (Array.isArray(valor) && valor.length === 0)
+  );
+}
+
 /**
- * Avalia um operador específico
+ * Avalia um operador específico.
+ *
+ * ⚠️ O esperado chega sempre como texto (o modal grava assim), mas a resposta
+ * pode ser número ou booleano. Igual/Diferente comparam os dois lados como
+ * texto: antes `3 === "3"` dava falso e `3 !== "3"` verdadeiro — a tela
+ * mostrava a questão e a submissão discordava (tickets-documentacao, card 19).
+ * A tabela de testes é espelhada no client (`avaliarCondicao.test.ts`).
  */
-function evaluateOperator(
+export function evaluateOperator(
   operator: Operator,
   actualValue: any,
   expectedValue: string | number | boolean,
 ): boolean {
   switch (operator) {
     case Operator.Equal:
-      return actualValue === expectedValue;
+      return String(actualValue) === String(expectedValue);
 
     case Operator.NotEqual:
-      return actualValue !== expectedValue;
+      return String(actualValue) !== String(expectedValue);
 
     case Operator.GreaterThan:
       return Number(actualValue) > Number(expectedValue);
@@ -78,7 +93,7 @@ function evaluateOperator(
 
     case Operator.Contains:
       if (Array.isArray(actualValue)) {
-        return actualValue.includes(expectedValue);
+        return actualValue.map(String).includes(String(expectedValue));
       }
       if (typeof actualValue === 'string') {
         return actualValue.includes(String(expectedValue));
