@@ -1,4 +1,6 @@
+import { Types } from 'mongoose';
 import { ordemDasQuestoes } from './utils/ordem-das-questoes';
+import { copiarQuestoes, nomeDaCopia } from './utils/copia-da-secao';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { GetAllInput } from 'src/common/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
@@ -174,6 +176,16 @@ export class SectionSevice {
       }
 
       const newSection = Section.createCopy(originalSection);
+      // Nome legível, único no formulário (card 18).
+      const irmas = await this.repository.findByIds(
+        // `sections` guarda ObjectIds (o tipo diz Section).
+        (form.sections ?? []).map((id) => (id as unknown as Types.ObjectId).toString()),
+        { page: 1, limit: 1000 },
+      );
+      newSection.name = nomeDaCopia(
+        originalSection.name,
+        irmas.data.map((s) => s.name),
+      );
 
       const session = await this.repository.startSession();
       session.startTransaction();
@@ -181,9 +193,10 @@ export class SectionSevice {
       try {
         const sectionCreated = await this.repository.create(newSection, { session });
 
+        // Sem "undefined" no helpText e com as condições internas
+        // remapeadas para as cópias (card 18).
         const newQuestionIds: any[] = [];
-        for (const originalQuestion of originalSection.questions) {
-          const newQuestion = Question.createCopy(originalQuestion);
+        for (const newQuestion of copiarQuestoes(originalSection.questions)) {
           const questionCreated = await this.questionRepository.create(newQuestion, { session });
           newQuestionIds.push(questionCreated._id);
         }
