@@ -1,3 +1,4 @@
+import { ordemDasQuestoes } from './utils/ordem-das-questoes';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { GetAllInput } from 'src/common/base/interfaces/get-all.input';
 import { GetAllOutput } from 'src/common/base/interfaces/get-all.output';
@@ -49,10 +50,7 @@ export class SectionSevice {
         throw error;
       }
       if (error?.code === 11000) {
-        throw new HttpException(
-          'Já existe uma seção com esse nome',
-          HttpStatus.CONFLICT,
-        );
+        throw new HttpException('Já existe uma seção com esse nome', HttpStatus.CONFLICT);
       }
       throw new HttpException(
         `Erro ao criar a seção: ${error?.message ?? error}`,
@@ -128,42 +126,32 @@ export class SectionSevice {
     await this.repository.updateOne(section);
   }
 
-  async reorderQuestions(
-    sectionId: string,
-    dto: ReorderQuestionsDtoInput,
-  ): Promise<void> {
+  async reorderQuestions(sectionId: string, dto: ReorderQuestionsDtoInput): Promise<void> {
     const section = await this.repository.findById(sectionId);
     if (!section) {
       throw new HttpException('Seção não encontrada', HttpStatus.NOT_FOUND);
     }
 
-    const sectionQuestionIds = section.questions.map((q) => q._id.toString());
-    const receivedQuestionIds = dto.questionIds;
-
-    const missingInSection = receivedQuestionIds.filter((id) => !sectionQuestionIds.includes(id));
-    if (missingInSection.length > 0) {
+    // Inativas que a tela não mandou vão para o fim (card 21).
+    const ordem = ordemDasQuestoes(
+      section.questions.map((q) => ({ id: q._id.toString(), active: q.active })),
+      dto.questionIds,
+    );
+    if ('foraDaSecao' in ordem) {
       throw new HttpException(
-        `As seguintes questões não pertencem à seção: ${missingInSection.join(', ')}`,
+        `As seguintes questões não pertencem à seção: ${ordem.foraDaSecao.join(', ')}`,
         HttpStatus.BAD_REQUEST,
       );
     }
-
-    const missingInReceived = sectionQuestionIds.filter((id) => !receivedQuestionIds.includes(id));
-    if (missingInReceived.length > 0) {
+    if ('faltando' in ordem) {
       throw new HttpException(
-        `As seguintes questões da seção estão faltando no array recebido: ${missingInReceived.join(', ')}`,
+        `As seguintes questões ativas da seção estão faltando no array recebido: ${ordem.faltando.join(', ')}`,
         HttpStatus.BAD_REQUEST,
       );
-    }
-
-    if (sectionQuestionIds.length !== receivedQuestionIds.length) {
-      throw new HttpException('A quantidade de questões não corresponde', HttpStatus.BAD_REQUEST);
     }
 
     const questionsMap = new Map(section.questions.map((q) => [q._id.toString(), q]));
-    section.questions = receivedQuestionIds
-      .map((id) => questionsMap.get(id))
-      .filter((q) => q !== undefined);
+    section.questions = ordem.ids.map((id) => questionsMap.get(id)).filter((q) => q !== undefined);
 
     try {
       await this.repository.updateOne(section);
