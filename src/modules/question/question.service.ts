@@ -63,6 +63,14 @@ export class QuestionSevice {
       throw new HttpException('Questão não encontrada', HttpStatus.NOT_FOUND);
     }
 
+    // Uma questão condicionada a ela mesma nunca aparece (card 27).
+    if (dto.conditions?.conditions?.some((c) => String(c.questionId) === id)) {
+      throw new HttpException(
+        'Uma questão não pode ter condição sobre ela mesma',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     // Só valida condições que mudaram (card 23): reenviar as mesmas, com uma
     // referência que ficou inativa depois, não pode travar a edição do texto.
     if (dto.conditions && !condicoesIguais(existingQuestion.conditions, dto.conditions)) {
