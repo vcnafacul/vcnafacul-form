@@ -9,6 +9,7 @@ import { AnswerType } from './enum/answer-type';
 import { QuestionRepository } from './question.repository';
 import { Question } from './question.schema';
 import { SectionRepository } from '../section/section.repository';
+import { condicoesIguais } from './utils/condicoes-iguais';
 
 @Injectable()
 export class QuestionSevice {
@@ -62,7 +63,9 @@ export class QuestionSevice {
       throw new HttpException('Questão não encontrada', HttpStatus.NOT_FOUND);
     }
 
-    if (dto.conditions) {
+    // Só valida condições que mudaram (card 23): reenviar as mesmas, com uma
+    // referência que ficou inativa depois, não pode travar a edição do texto.
+    if (dto.conditions && !condicoesIguais(existingQuestion.conditions, dto.conditions)) {
       await this.validateConditions(dto.conditions);
     }
 
@@ -145,9 +148,16 @@ export class QuestionSevice {
     if (existingQuestions.length !== uniqueQuestionIds.length) {
       const existingIds = existingQuestions.map((q) => q._id.toString());
       const missingIds = uniqueQuestionIds.filter((id) => !existingIds.includes(id));
+      // O texto das perguntas, não os ids: quem lê o toast precisa saber qual
+      // questão está atrapalhando (card 23).
+      const inativas = await this.repository.model.find({ _id: { $in: missingIds } });
+      const descricao = missingIds.map((id) => {
+        const q = inativas.find((i) => i._id.toString() === id);
+        return q ? `"${q.text}" (inativa)` : 'uma questão excluída';
+      });
 
       throw new HttpException(
-        `As seguintes questões referenciadas nas condições não existem ou estão inativas: ${missingIds.join(', ')}`,
+        `As condições apontam para questões inativas ou excluídas: ${descricao.join(', ')}`,
         HttpStatus.BAD_REQUEST,
       );
     }

@@ -75,4 +75,38 @@ describe('QuestionSevice', () => {
       );
     });
   });
+
+  describe('condição com referência inativa (tickets-documentacao, 23)', () => {
+    it('⚠️ mesmas condições reenviadas: edita o texto sem validar de novo', async () => {
+      const { service, repository, existente } = montar();
+      await service.update('q2', {
+        text: 'Renda (corrigido)',
+        conditions: existente.conditions,
+      } as never);
+      expect(repository.model.find).not.toHaveBeenCalled();
+      expect(repository.updateFields).toHaveBeenCalled();
+    });
+
+    it('condições novas com referência inativa: recusa citando o texto', async () => {
+      const { service, repository } = montar();
+      repository.model.find
+        .mockResolvedValueOnce([]) // ativas
+        .mockResolvedValueOnce([{ _id: 'q9', text: 'Você mora sozinho?' }]);
+      await expect(
+        service.update('q2', {
+          conditions: {
+            logic: 'And',
+            conditions: [
+              { questionId: 'q9', operator: 'Equal', expectedValue: 'Não' },
+              { questionId: 'q8', operator: 'Equal', expectedValue: 'x' },
+            ],
+          },
+        } as never),
+      ).rejects.toMatchObject({
+        message:
+          'As condições apontam para questões inativas ou excluídas: "Você mora sozinho?" (inativa), uma questão excluída',
+      });
+      expect(repository.updateFields).not.toHaveBeenCalled();
+    });
+  });
 });
