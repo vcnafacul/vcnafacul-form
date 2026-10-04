@@ -16,7 +16,7 @@ import { ComplexConditionDtoInput } from './complex-condition.dto.input';
 
 export class UpdateQuestionDtoInput {
   @ApiProperty()
-  @IsString()
+  @IsString({ message: 'O texto da pergunta deve ser um texto' })
   @IsOptional()
   text?: string;
 
@@ -26,7 +26,7 @@ export class UpdateQuestionDtoInput {
   helpText?: string;
 
   @ApiProperty({ enum: AnswerType })
-  @IsEnum(AnswerType)
+  @IsEnum(AnswerType, { message: 'Tipo de resposta inválido' })
   @IsOptional()
   answerType?: AnswerType;
 
@@ -34,7 +34,7 @@ export class UpdateQuestionDtoInput {
     enum: AnswerCollectionType,
     default: AnswerCollectionType.Single,
   })
-  @IsEnum(AnswerCollectionType)
+  @IsEnum(AnswerCollectionType, { message: 'Tipo de coleção inválido' })
   @IsOptional()
   collection?: AnswerCollectionType;
 
@@ -44,10 +44,11 @@ export class UpdateQuestionDtoInput {
     description: 'Obrigatório quando answerType = Options',
   })
   @ValidateIf((o) => o.answerType === AnswerType.Options)
-  @IsArray()
-  @ArrayNotEmpty()
-  @IsString({ each: true })
-  @ArrayUnique() // opcional: evita opções duplicadas
+  @IsArray({ message: 'As opções devem ser uma lista' })
+  @ArrayNotEmpty({ message: 'Informe pelo menos uma opção' })
+  @IsString({ each: true, message: 'Cada opção deve ser um texto' })
+  // Mensagens em português (tickets-documentacao, card 26): chegam ao toast.
+  @ArrayUnique({ message: 'As opções não podem se repetir' })
   options?: string[];
 
   @ApiPropertyOptional({
