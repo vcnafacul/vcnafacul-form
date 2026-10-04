@@ -26,7 +26,7 @@ function montar() {
       conditions: [{ questionId: 'q1', operator: 'Equal', expectedValue: 'Sim' }],
     },
   };
-  const repository = {
+  const repository: Record<string, any> = {
     startSession: jest.fn().mockResolvedValue(session),
     create: jest.fn((e: Record<string, unknown>) =>
       Promise.resolve({ _id: new Types.ObjectId(), ...e }),
@@ -38,6 +38,7 @@ function montar() {
   const sectionRepository = {
     findById: jest.fn().mockResolvedValue({ questions: [] }),
     updateOne: jest.fn(),
+    model: { find: jest.fn().mockResolvedValue([]) },
   };
   const service = new QuestionSevice(repository as never, sectionRepository as never);
   return { service, repository, existente };
@@ -105,6 +106,75 @@ describe('QuestionSevice', () => {
       ).rejects.toMatchObject({
         message:
           'As condições apontam para questões inativas ou excluídas: "Você mora sozinho?" (inativa), uma questão excluída',
+      });
+      expect(repository.updateFields).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('questão usada em condição (tickets-documentacao, 20)', () => {
+    const dependente = [{ text: 'Quantas pessoas moram com você?' }];
+
+    it('⚠️ excluir: recusa com 409 listando as dependentes', async () => {
+      const { service, repository } = montar();
+      repository.model.find.mockResolvedValueOnce(dependente);
+      repository.delete = jest.fn();
+      await expect(service.delete('q1')).rejects.toMatchObject({
+        status: 409,
+        message:
+          'Esta questão é usada nas condições de: "Quantas pessoas moram com você?". Remova essas condições antes.',
+      });
+      expect(repository.delete).not.toHaveBeenCalled();
+    });
+
+    it('⚠️ desativar: recusa; reativar é livre', async () => {
+      const { service, repository, existente } = montar();
+      repository.updateOne = jest.fn();
+      repository.model.find.mockResolvedValueOnce(dependente);
+      Object.assign(existente, { active: true });
+      await expect(service.setActive('q1')).rejects.toMatchObject({ status: 409 });
+      expect(repository.updateOne).not.toHaveBeenCalled();
+
+      Object.assign(existente, { active: false });
+      await service.setActive('q1');
+      expect(repository.updateOne).toHaveBeenCalled();
+    });
+
+    it('renomear opção usada em condição: recusa citando a opção', async () => {
+      const { service, repository, existente } = montar();
+      Object.assign(existente, { options: ['Ônibus', 'Carro'] });
+      repository.model.find.mockResolvedValueOnce([{ text: 'Quanto gasta de passagem?' }]);
+      await expect(
+        service.update('q1', { options: ['Ônibus/metrô', 'Carro'] } as never),
+      ).rejects.toMatchObject({
+        status: 409,
+        message:
+          'A opção "Ônibus" é usada nas condições de: "Quanto gasta de passagem?". Atualize essas condições antes.',
+      });
+      expect(repository.updateFields).not.toHaveBeenCalled();
+    });
+
+    it('sem dependentes: exclui normalmente', async () => {
+      const { service, repository } = montar();
+      repository.model.find.mockResolvedValueOnce([]);
+      repository.delete = jest.fn();
+      await service.delete('q1');
+      expect(repository.delete).toHaveBeenCalledWith('q1');
+    });
+  });
+
+  describe('autorreferência (tickets-documentacao, 27)', () => {
+    it('condição sobre a própria questão: recusa', async () => {
+      const { service, repository } = montar();
+      await expect(
+        service.update('q2', {
+          conditions: {
+            logic: 'And',
+            conditions: [{ questionId: 'q2', operator: 'Equal', expectedValue: 'x' }],
+          },
+        } as never),
+      ).rejects.toMatchObject({
+        status: 400,
+        message: 'Uma questão não pode ter condição sobre ela mesma',
       });
       expect(repository.updateFields).not.toHaveBeenCalled();
     });
