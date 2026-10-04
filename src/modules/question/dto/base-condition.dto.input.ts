@@ -7,7 +7,7 @@ export class BaseConditionDtoInput {
     description: 'ID da questão que será avaliada na condição',
     example: '507f1f77bcf86cd799439011',
   })
-  @IsString()
+  @IsString({ message: 'Informe a questão da condição' })
   questionId: string;
 
   @ApiProperty({
@@ -15,13 +15,13 @@ export class BaseConditionDtoInput {
     description: 'Operador de comparação para avaliar a condição',
     example: Operator.Equal,
   })
-  @IsEnum(Operator)
+  @IsEnum(Operator, { message: 'Operador da condição inválido' })
   operator: Operator;
 
   @ApiProperty({
     description: 'Valor esperado para comparação na condição',
     example: 'Sim',
   })
-  @IsString()
+  @IsString({ message: 'Informe o valor esperado da condição' })
   expectedValue: string;
 }

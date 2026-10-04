@@ -9,6 +9,7 @@ import { AnswerType } from './enum/answer-type';
 import { QuestionRepository } from './question.repository';
 import { Question } from './question.schema';
 import { SectionRepository } from '../section/section.repository';
+import { condicoesIguais } from './utils/condicoes-iguais';
 
 @Injectable()
 export class QuestionSevice {
@@ -62,7 +63,17 @@ export class QuestionSevice {
       throw new HttpException('Questão não encontrada', HttpStatus.NOT_FOUND);
     }
 
-    if (dto.conditions) {
+    // Uma questão condicionada a ela mesma nunca aparece (card 27).
+    if (dto.conditions?.conditions?.some((c) => String(c.questionId) === id)) {
+      throw new HttpException(
+        'Uma questão não pode ter condição sobre ela mesma',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Só valida condições que mudaram (card 23): reenviar as mesmas, com uma
+    // referência que ficou inativa depois, não pode travar a edição do texto.
+    if (dto.conditions && !condicoesIguais(existingQuestion.conditions, dto.conditions)) {
       await this.validateConditions(dto.conditions);
     }
 
@@ -75,6 +86,21 @@ export class QuestionSevice {
 
     if (dto.answerType && dto.answerType !== AnswerType.Options) {
       dto.options = [];
+    }
+
+    // Opção removida ou renomeada que outra questão usa em condição: a
+    // condição nunca mais seria atendida (card 20).
+    if (dto.options && existingQuestion.options?.length) {
+      const removidas = existingQuestion.options.filter((o) => !dto.options!.includes(o));
+      if (removidas.length > 0) {
+        const dependentes = await this.dependentesDe(id, { valores: removidas });
+        if (dependentes.length > 0) {
+          throw new HttpException(
+            `A opção ${removidas.map((o) => `"${o}"`).join(', ')} é usada nas condições de: ${dependentes.map((d) => `"${d.text}"`).join(', ')}. Atualize essas condições antes.`,
+            HttpStatus.CONFLICT,
+          );
+        }
+      }
     }
 
     try {
@@ -92,8 +118,55 @@ export class QuestionSevice {
       throw new HttpException('question id not exist', HttpStatus.NOT_FOUND);
     }
 
+    // Desativar uma referência de condição faria as dependentes sumirem para
+    // sempre (card 20). Reativar é livre.
+    if (question.active) {
+      await this.recusarSeReferencia(questionId, { soAtivas: true });
+    }
     question.active = !question.active;
     await this.repository.updateOne(question);
+  }
+
+  /**
+   * Questões (não excluídas) cujas condições apontam para `questionId` —
+   * opcionalmente só as que comparam com um dos `valores` (tickets-
+   * documentacao, card 20).
+   */
+  private async dependentesDe(
+    questionId: string,
+    { soAtivas = false, valores }: { soAtivas?: boolean; valores?: string[] } = {},
+  ): Promise<{ text: string }[]> {
+    const filtro: Record<string, unknown> = {
+      _id: { $ne: questionId },
+      deleted: { $ne: true },
+      'conditions.conditions': {
+        $elemMatch: {
+          questionId,
+          ...(valores ? { expectedValue: { $in: valores } } : {}),
+        },
+      },
+    };
+    if (soAtivas) filtro.active = true;
+    return await this.repository.model.find(filtro, { text: 1 });
+  }
+
+  /**
+   * Excluir ou desativar uma questão usada em condição deixava a condição
+   * apontando para o nada: a dependente nunca mais aparecia, e ninguém via
+   * (card 20). Recusa listando as perguntas — o caminho é remover essas
+   * condições antes (botão "Remover condições", card 22).
+   */
+  private async recusarSeReferencia(
+    questionId: string,
+    opcoes: { soAtivas?: boolean } = {},
+  ): Promise<void> {
+    const dependentes = await this.dependentesDe(questionId, opcoes);
+    if (dependentes.length > 0) {
+      throw new HttpException(
+        `Esta questão é usada nas condições de: ${dependentes.map((d) => `"${d.text}"`).join(', ')}. Remova essas condições antes.`,
+        HttpStatus.CONFLICT,
+      );
+    }
   }
 
   async delete(id: string): Promise<void> {
@@ -101,6 +174,7 @@ export class QuestionSevice {
     if (!question) {
       throw new HttpException('Questão não encontrada', HttpStatus.NOT_FOUND);
     }
+    await this.recusarSeReferencia(id);
 
     try {
       const session = await this.repository.startSession();
@@ -145,9 +219,16 @@ export class QuestionSevice {
     if (existingQuestions.length !== uniqueQuestionIds.length) {
       const existingIds = existingQuestions.map((q) => q._id.toString());
       const missingIds = uniqueQuestionIds.filter((id) => !existingIds.includes(id));
+      // O texto das perguntas, não os ids: quem lê o toast precisa saber qual
+      // questão está atrapalhando (card 23).
+      const inativas = await this.repository.model.find({ _id: { $in: missingIds } });
+      const descricao = missingIds.map((id) => {
+        const q = inativas.find((i) => i._id.toString() === id);
+        return q ? `"${q.text}" (inativa)` : 'uma questão excluída';
+      });
 
       throw new HttpException(
-        `As seguintes questões referenciadas nas condições não existem ou estão inativas: ${missingIds.join(', ')}`,
+        `As condições apontam para questões inativas ou excluídas: ${descricao.join(', ')}`,
         HttpStatus.BAD_REQUEST,
       );
     }

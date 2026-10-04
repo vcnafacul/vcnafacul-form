@@ -16,7 +16,7 @@ export class ComplexConditionDtoInput {
       },
     ],
   })
-  @IsArray()
+  @IsArray({ message: 'As condições devem ser uma lista' })
   @ValidateNested({ each: true })
   @Type(() => BaseConditionDtoInput)
   conditions: BaseConditionDtoInput[];
@@ -26,6 +26,6 @@ export class ComplexConditionDtoInput {
     description: 'Lógica de combinação das condições (AND/OR)',
     example: Logic.And,
   })
-  @IsEnum(Logic)
+  @IsEnum(Logic, { message: 'Lógica das condições inválida (E/OU)' })
   logic: Logic;
 }

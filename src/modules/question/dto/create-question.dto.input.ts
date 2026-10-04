@@ -3,6 +3,7 @@ import {
   ArrayNotEmpty,
   ArrayUnique,
   IsArray,
+  IsBoolean,
   IsEnum,
   IsOptional,
   IsString,
@@ -21,7 +22,7 @@ export class CreateQuestionDtoInput {
   sectionId: string;
 
   @ApiProperty()
-  @IsString()
+  @IsString({ message: 'O texto da pergunta deve ser um texto' })
   text: string;
 
   @ApiProperty()
@@ -30,14 +31,14 @@ export class CreateQuestionDtoInput {
   helpText?: string;
 
   @ApiProperty({ enum: AnswerType })
-  @IsEnum(AnswerType)
+  @IsEnum(AnswerType, { message: 'Tipo de resposta inválido' })
   answerType: AnswerType;
 
   @ApiProperty({
     enum: AnswerCollectionType,
     default: AnswerCollectionType.Single,
   })
-  @IsEnum(AnswerCollectionType)
+  @IsEnum(AnswerCollectionType, { message: 'Tipo de coleção inválido' })
   collection: AnswerCollectionType;
 
   // Só valida/exige quando for Options
@@ -46,10 +47,11 @@ export class CreateQuestionDtoInput {
     description: 'Obrigatório quando answerType = Options',
   })
   @ValidateIf((o) => o.answerType === AnswerType.Options)
-  @IsArray()
-  @ArrayNotEmpty()
-  @IsString({ each: true })
-  @ArrayUnique() // opcional: evita opções duplicadas
+  @IsArray({ message: 'As opções devem ser uma lista' })
+  @ArrayNotEmpty({ message: 'Informe pelo menos uma opção' })
+  @IsString({ each: true, message: 'Cada opção deve ser um texto' })
+  // Mensagens em português (tickets-documentacao, card 26): chegam ao toast.
+  @ArrayUnique({ message: 'As opções não podem se repetir' })
   options?: string[];
 
   @ApiPropertyOptional({
@@ -60,4 +62,14 @@ export class CreateQuestionDtoInput {
   @ValidateNested()
   @Type(() => ComplexConditionDtoInput)
   conditions?: ComplexConditionDtoInput;
+
+  /**
+   * A chave "Questão Ativa" da criação. Sem o campo aqui, o `whitelist` do
+   * ValidationPipe o descartava e a questão nascia sempre ativa
+   * (tickets-documentacao, card 24). Ausente = ativa (padrão do schema).
+   */
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean({ message: 'O campo ativo deve ser verdadeiro ou falso' })
+  active?: boolean;
 }
