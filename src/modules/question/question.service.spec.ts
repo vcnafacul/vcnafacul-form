@@ -161,4 +161,22 @@ describe('QuestionSevice', () => {
       expect(repository.delete).toHaveBeenCalledWith('q1');
     });
   });
+
+  describe('autorreferência (tickets-documentacao, 27)', () => {
+    it('condição sobre a própria questão: recusa', async () => {
+      const { service, repository } = montar();
+      await expect(
+        service.update('q2', {
+          conditions: {
+            logic: 'And',
+            conditions: [{ questionId: 'q2', operator: 'Equal', expectedValue: 'x' }],
+          },
+        } as never),
+      ).rejects.toMatchObject({
+        status: 400,
+        message: 'Uma questão não pode ter condição sobre ela mesma',
+      });
+      expect(repository.updateFields).not.toHaveBeenCalled();
+    });
+  });
 });
