@@ -3,6 +3,7 @@ import {
   ArrayNotEmpty,
   ArrayUnique,
   IsArray,
+  IsBoolean,
   IsEnum,
   IsOptional,
   IsString,
@@ -61,4 +62,14 @@ export class CreateQuestionDtoInput {
   @ValidateNested()
   @Type(() => ComplexConditionDtoInput)
   conditions?: ComplexConditionDtoInput;
+
+  /**
+   * A chave "Questão Ativa" da criação. Sem o campo aqui, o `whitelist` do
+   * ValidationPipe o descartava e a questão nascia sempre ativa
+   * (tickets-documentacao, card 24). Ausente = ativa (padrão do schema).
+   */
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean({ message: 'O campo ativo deve ser verdadeiro ou falso' })
+  active?: boolean;
 }
